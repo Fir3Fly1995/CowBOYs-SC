@@ -31,7 +31,7 @@ multi-lingua - International Zone
     rules - Essential
     pl-only - Polish Only Text Channel
 Only Real CowBOYs - Inner Circle
-    talkie-sheit
+    talkie-shieet
     VC
 Sheriff's Office - Mod/Admin Center
     Setup-forum - Forum For setting up
@@ -55,84 +55,86 @@ Sheriff's Office - Mod/Admin Center
             Head Hunter
     Roles - Declares Roles - Lock out entries except for admins
 # What Role can do what?
-@Everyone
+        General Perms
+    Channel
+        @ROLE
+            Permission
     Rules
-        YES - View
-        YES - Message History
-        YES - React
-        NO -  Everything else
-    @Pilgrim (& up)
-        Open Events Category - GLOBAL
-            YES - View Channels
-            YES - Connect
-    @Deputy (& up)
-        Open Events Category - GLOBAL
-            DEF - ALL Perms
-    @Pilgrim & @Vagabond
-        Funky Stuff Category - GLOBAL
-            YES - View Channels
-            YES - Send Messages & Make Posts
-            YES - Send Messages in Threads & Posts
+        @Everyone
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+Gatehouse
+    airlock
+        @Everyone
+            NO -  View Channel
+        @Rules Accepted
+            YES - View Channel
+            YES - Read History
+        @Pilgrim
+            YES - View Channel
+            YES - Send Messages
+            YES - Read History
+    auto-roles
+        @Everyone
+            NO -  View Channel
+        @Rules Accepted
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+        @Pilgrim
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+    roles
+        @Everyone
+            NO  - View Channel
+        @Rules Accepted
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+        @Pilgrim
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+Open Events
+        @Deputy
+        @Sheriff
+        @True CowBOY
+        @Clint Eastwood
+            Global Perms aapply
+    Event-Rules
+        @Everyone
+            NO  - View Channel
+        @Pilgrim
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+        @Vagabond
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+        @Friendly Traveller
+            YES - View Channel
+            NO  - Send Messages
+            NO  - Add Reactions
+            YES - Read History
+        @CowBOY
+            YES - View Channel
+            NO  - Send Messages
+            YES - Read History
+    Event-Briefs - FORUM
+        @Everyone
+            NO  - View Channel
+        @Pilgrim
+            YES - View Channel
+            NO  - Create Posts
+            YES - Send Messages in Posts
             YES - Add Reactions
-            YES - Read Message History
-            YES - VC Connect
-            YES - VC SPeak
-            NO -  VC Video
-            YES - Soundboard
-            YES - VC Voice Active
-            YES - VC Use Activities
-    @CowBOY
-            YES - View Channels
-            YES - Send Messages & Make Posts
-            YES - Send Messages in Threads & Posts
-            YES - Create Threads (Public)
+            YES - Read History
+        @Vagabond
+            YES - View Channel
+            NO  - Create Posts
+            YES - Send Messages in Posts
             YES - Add Reactions
-            YES - Read Message History
-            YES - VC Connect
-            YES - VC SPeak
-            NO -  VC Video
-            YES - Soundboard
-            YES - VC Voice Active
-            YES - VC Use Activities
-    @Friendly Traveller
-        Funky Stuff Category - GLOBAL
-            YES - View Channels
-            NO -  Send Messages & Make Posts
-            NO -  Send Messages in Threads & Posts
-            YES - Add Reactions
-            NO -  Read Message History
-            YES - VC Connect
-            YES - VC SPeak
-            NO -  VC Video
-            YES - Soundboard
-            YES - VC Voice Active
-            YES - VC Use Activities
-     @Pilgrim
-        See channels - Only - GLOBAL
-        Open Events - Channel Specific
-            @Pilgrim (& Above)
-                Rules
-                    NO -  Send Messages
-                    NO -  Reactions
-                    YES - Message History
-            @Pilgrim, @Vagabond
-                event-briefs
-                    YES - View Channel
-                    NO -  Create Posts
-                    YES - Message Posts
-                    YES - React
-                    YES - Post History
-            @CowBOY (& up)
-                event-briefs
-                    YES - View Channel
-                    YES - Create Posts
-                    YES - Message Posts
-                    YES - React
-                    YES - Post History
-            @Friendly Traveller
-                event-briefs
-                    YES - View Channel
-                    YES - Create Posts
-                    YES - Message Posts
-                    YES - React
-                    NO -  Post History
+            YES - Read History
