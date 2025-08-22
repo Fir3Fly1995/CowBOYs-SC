@@ -1,0 +1,1 @@
+# The plan and aim for the Discord Server
