@@ -102,7 +102,7 @@ Open Events
         @Sheriff
         @True CowBOY
         @Clint Eastwood
-            Global Perms aapply
+            Global Perms Apply
     Event-Rules
         @Everyone
             NO  - View Channel
@@ -129,12 +129,100 @@ Open Events
         @Pilgrim
             YES - View Channel
             NO  - Create Posts
-            YES - Send Messages in Posts
+            YES - Messages in Posts
             YES - Add Reactions
             YES - Read History
         @Vagabond
             YES - View Channel
             NO  - Create Posts
+            YES - Messages in Posts
+            YES - Add Reactions
+            YES - Read History
+        @Friendly Traveller
+            YES - View Channel
+            NO  - Create Posts
+            NO  - Message in Posts
+            NO  - Read History
+        @CowBOY
+            YES - View Channel
+            YES - Create Posts
             YES - Send Messages in Posts
             YES - Add Reactions
             YES - Read History
+Funky Stuff
+        @Deputy
+        @Sheriff
+        @True CowBOY
+        @Clint Eastwood
+            Global Perms Apply
+        @Everyone
+            NO  - View Channels
+        @Pilgrim
+            YES - View Channel
+            NO  - Send Messages & Posts
+            YES - Send Messages in Threads & Posts
+            YES - Add Reactions
+            YES - Read History
+            YES - Connect
+            YES - Speak
+            NO  - Video
+            YES - Soundboard
+            YES - Voice Activity
+            YES - Use Activities
+        @Vagabond
+            YES - View Channel
+            NO  - Send Messages & Posts
+            YES - Send Messages in Threads & Posts
+            YES - Add Reactions
+            YES - Read History
+            YES - Connect
+            YES - Speak
+            NO  - Video
+            YES - Soundboard
+            YES - Voice Activity
+            YES - Use Activities
+        @Friendly Traveller
+            YES - View Channel
+            NO  - Send Messages & Posts
+            YES - Send Messages in Threads & Posts
+            YES - Add Reactions
+            NO  - Read History
+            YES - Connect
+            YES - Speak
+            NO  - Video
+            YES - Soundboard
+            YES - Voice Activity
+            YES - Use Activities
+        @CowBOY
+            YES - View Channel
+            NO  - Send Messages & Posts
+            YES - Send Messages in Threads & Posts
+            YES - Create Threads
+            YES - Add Reactions
+            YES - Read History
+            YES - Connect
+            YES - Speak
+            NO  - Video
+            YES - Soundboard
+            YES - Voice Activity
+            YES - Use Activities
+Campfire
+        @Everyone
+            NO  - View Channels
+        @Pilgrim
+            NO  - View Channels
+        @Vagabond
+            YES - View Channel
+            YES - Send Messages & Posts
+            YES - Send Messages in Threads & Posts
+            YES - Create Threads
+            YES - Add Reactions
+            YES - Read History
+            YES - Connect
+            YES - Speak
+            NO  - Video
+            YES - Soundboard
+            YES - Voice Activity
+            YES - Use Activities
+        @CowBOY 
+                        TERM        --      Return
