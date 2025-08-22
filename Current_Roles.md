@@ -10,6 +10,12 @@
 9. Verified - Obtained after getting verified
 10. Pending Verification - Auto-role for arrivals
 
+All Roles have been double checked. Next is to check channel permissions against category and type.
+
+## Known Security issues
+* Embedding links
+
+
 ## Region Roles
 1. EU TZ
     EU-West
