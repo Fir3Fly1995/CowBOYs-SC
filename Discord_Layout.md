@@ -6,16 +6,16 @@ Gatehouse - Landing Pad
     Airlock
     Auto-Roles - Not Required
     Roles - DECLARE ROLES
-Funky Stuff
+Open Events - Open to everyone
+    Events-Rules - Not Required
+    event-briefs - Forum - Put rules here
+Funky Stuff - Main Lounge - Open for all (Hangouts)
     Lets-Chat - General Chat???
     I-Want-To-Flex - FORUM
         Screenshots inside
     VC-Funky 1
     VC-Funky 2
     VC-Funky Stream 1
-Open Events
-    Events-Rules - Not Required
-    event-briefs - Forum - Put rules here
 Campfire - Vagabond bonding zone - First Drop
     main-camp - Text Channel
 Cowboys - General for people we are comfortable with
@@ -43,7 +43,7 @@ Sheriff's Office - Mod/Admin Center
 @Everyone
     Rules
         Reaction Role for Agreement to Rules
-@Rules Acceptes
+@Rules Accepted
     Airlock
         Take @Verified (if possible)
     Auto-roles
@@ -53,4 +53,86 @@ Sheriff's Office - Mod/Admin Center
             Merchant
             Renegade
             Head Hunter
-    roles
+    Roles - Declares Roles - Lock out entries except for admins
+# What Role can do what?
+@Everyone
+    Rules
+        YES - View
+        YES - Message History
+        YES - React
+        NO -  Everything else
+    @Pilgrim (& up)
+        Open Events Category - GLOBAL
+            YES - View Channels
+            YES - Connect
+    @Deputy (& up)
+        Open Events Category - GLOBAL
+            DEF - ALL Perms
+    @Pilgrim & @Vagabond
+        Funky Stuff Category - GLOBAL
+            YES - View Channels
+            YES - Send Messages & Make Posts
+            YES - Send Messages in Threads & Posts
+            YES - Add Reactions
+            YES - Read Message History
+            YES - VC Connect
+            YES - VC SPeak
+            NO -  VC Video
+            YES - Soundboard
+            YES - VC Voice Active
+            YES - VC Use Activities
+    @CowBOY
+            YES - View Channels
+            YES - Send Messages & Make Posts
+            YES - Send Messages in Threads & Posts
+            YES - Create Threads (Public)
+            YES - Add Reactions
+            YES - Read Message History
+            YES - VC Connect
+            YES - VC SPeak
+            NO -  VC Video
+            YES - Soundboard
+            YES - VC Voice Active
+            YES - VC Use Activities
+    @Friendly Traveller
+        Funky Stuff Category - GLOBAL
+            YES - View Channels
+            NO -  Send Messages & Make Posts
+            NO -  Send Messages in Threads & Posts
+            YES - Add Reactions
+            NO -  Read Message History
+            YES - VC Connect
+            YES - VC SPeak
+            NO -  VC Video
+            YES - Soundboard
+            YES - VC Voice Active
+            YES - VC Use Activities
+     @Pilgrim
+        See channels - Only - GLOBAL
+        Open Events - Channel Specific
+            @Pilgrim (& Above)
+                Rules
+                    NO -  Send Messages
+                    NO -  Reactions
+                    YES - Message History
+            @Pilgrim, @Vagabond
+                event-briefs
+                    YES - View Channel
+                    NO -  Create Posts
+                    YES - Message Posts
+                    YES - React
+                    YES - Post History
+            @CowBOY (& up)
+                event-briefs
+                    YES - View Channel
+                    YES - Create Posts
+                    YES - Message Posts
+                    YES - React
+                    YES - Post History
+            @Friendly Traveller
+                event-briefs
+                    YES - View Channel
+                    YES - Create Posts
+                    YES - Message Posts
+                    YES - React
+                    NO -  Post History
