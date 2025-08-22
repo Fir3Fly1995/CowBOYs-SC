@@ -33,4 +33,4 @@
 3. Don't harass new players - We were all new at some point. 
 4. 
 5. 
-6. Grey Market
+6. Grey Market - Be careful and find reputable sources.
