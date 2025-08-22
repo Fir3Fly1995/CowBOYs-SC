@@ -1,32 +1,50 @@
-Landing Pad
-    Airlock
+# The layout of the Discord server itself
+#### Does not include Temporary Channels
+
     Rules
-    Verify
-    Roles
-Lounge - Non Verified
-    General - TEXT
-    Screenshots - TEXT
-    Help - Forum
-    General VC - VOICE
-Second Level
-    Text - etc
-Third Level - Main Lounge
-    Text, Voice
-Events
-    Announcements
-    Stage
-    Forum
-OpsStn
-    Rules - TEXT
-    Voice-1 - VOICE
-    Voice-2 - VOICE
-    Voice-3 - VOICE
-    Voice-4 - VOICE
-Admin
-    Admin - TEXT
-    Moderator - TEXT (Bots Only)
-    Amin - VOICE
-    Office-1 - VOICE (MODS/ADMIN)
-    Office-2 - VOICE (limit to 2 people, open to everyone past the airlock)
-Deep Space
-    AFK Voice (Timer for 10 minutes, in-line with Star Citizen AFK Timer)
+Gatehouse - Landing Pad
+    Airlock
+    Auto-Roles - Not Required
+    Roles - DECLARE ROLES
+Funky Stuff
+    Lets-Chat - General Chat???
+    I-Want-To-Flex - FORUM
+        Screenshots inside
+    VC-Funky 1
+    VC-Funky 2
+    VC-Funky Stream 1
+Open Events
+    Events-Rules - Not Required
+    event-briefs - Forum - Put rules here
+Campfire - Vagabond bonding zone - First Drop
+    main-camp - Text Channel
+Cowboys - General for people we are comfortable with
+    rules - for VC only
+    events - forum
+    community-hub - Forum
+    knowledge-hub - Forum
+    NSFW-forum - chk
+    VC-tac-team 1
+    VC-tac-team 2
+    VC-tac-team 3
+multi-lingua - International Zone
+    rules - Essential
+    pl-only - Polish Only Text Channel
+Only Real CowBOYs - Inner Circle
+    talkie-sheit
+    VC
+Sheriff's Office - Mod/Admin Center
+    Setup-forum - Forum For setting up
+    mod-center - For bot related drop-in drop-out of VC and General Security
+    main-hall - General Admin and Moderator Discussion Area
+    VC-Sherriff's 1v1 - a 1:1 chat with a Sheriff or Deputy - CREATE
+
+# FIXES - Repair Permissions for roles
+|Role           |PERMS                       |Priority           |Channel            |Category   |
+|---------------|----------------------------|-------------------|-------------------|-----------|
+|               |Verified/P-Ver              |Low                |Airlock            |Gatehouse  |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
