@@ -28,6 +28,9 @@
 ## Write The Rules
 #### can and can't do's
 -----------------------------------------
-1. PLACEHOLDER
-2. PLACEHOLDER
-
+1. Do not use foul language in text channels - Read the room in Voice Channels.
+2. Leave the ego on the battlefield. Nobody is better than anyone else.
+3. Don't harass new players - We were all new at some point. 
+4. 
+5. 
+6. Grey Market
