@@ -39,12 +39,18 @@ Sheriff's Office - Mod/Admin Center
     main-hall - General Admin and Moderator Discussion Area
     VC-Sherriff's 1v1 - a 1:1 chat with a Sheriff or Deputy - CREATE
 
-# FIXES - Repair Permissions for roles
-|Role           |PERMS                       |Priority           |Channel            |Category   |
-|---------------|----------------------------|-------------------|-------------------|-----------|
-|               |Verified/P-Ver              |Low                |Airlock            |Gatehouse  |
-|               |                            |                   |                   |           |
-|               |                            |                   |                   |           |
-|               |                            |                   |                   |           |
-|               |                            |                   |                   |           |
-|               |                            |                   |                   |           |
+# FIXES - Role Giving Flow for Server
+@Everyone
+    Rules
+        Reaction Role for Agreement to Rules
+@Rules Acceptes
+    Airlock
+        Take @Verified (if possible)
+    Auto-roles
+        Take Specialisation Roles
+            Gunslinger
+            Digger/Scrapper
+            Merchant
+            Renegade
+            Head Hunter
+    roles

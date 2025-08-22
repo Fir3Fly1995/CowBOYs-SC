@@ -18,7 +18,7 @@ All Roles have been double checked. Next is to check channel permissions against
 
 ## Specialisation Roles
 1. Gunslinger - Pew Pew Kill everything 
-2. Digger - Mining (&and Salvage???)
+2. Digger/Scrapper - Mining & Salvage (Industry)
 3. Merchant - Hauling
 4. Renegade - The Criminal Entrepreneur
 5. Head Hunter - Bounty Hunter
