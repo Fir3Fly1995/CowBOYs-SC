@@ -3,11 +3,15 @@ Landing Pad
     Rules
     Verify
     Roles
-Lounge
+Lounge - Non Verified
     General - TEXT
     Screenshots - TEXT
     Help - Forum
     General VC - VOICE
+Second Level
+    Text - etc
+Third Level - Main Lounge
+    Text, Voice
 Events
     Announcements
     Stage
