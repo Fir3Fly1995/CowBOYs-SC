@@ -7,14 +7,21 @@
 6. Friendly Traveller - Dual-Org (Security Risk)
 7. Vagabond - Training Equivalent
 8. Pilgrim - Initiate Equivelant
-9. Verified - Obtained after getting verified
-10. Pending Verification - Auto-role for arrivals
+9. Rules Accepted
+10. Verified - Obtained after getting verified
+11. Pending Verification - Auto-role for arrivals
 
 All Roles have been double checked. Next is to check channel permissions against category and type.
 
 ## Known Security issues
 * Embedding links
 
+## Specialisation Roles
+1. Gunslinger - Pew Pew Kill everything 
+2. Digger - Mining (&and Salvage???)
+3. Merchant - Hauling
+4. Renegade - The Criminal Entrepreneur
+5. Head Hunter - Bounty Hunter
 
 ## Region Roles
 1. EU TZ
@@ -76,10 +83,3 @@ All Roles have been double checked. Next is to check channel permissions against
     Australia
     New Zealand
     West Pacific Islands (Behind the terminator)
-
-## Specialisation Roles
-1. Gunslinger - Pew Pew Kill everything 
-2. Digger - Mining (&and Salvage???)
-3. Merchant - Hauling
-4. Renegade - The Criminal Entrepreneur
-5. Head Hunter - Bounty Hunter

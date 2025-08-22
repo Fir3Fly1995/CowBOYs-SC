@@ -19,9 +19,14 @@ Open Events
 Campfire - Vagabond bonding zone - First Drop
     main-camp - Text Channel
 Cowboys - General for people we are comfortable with
+    rules - for VC only
+    events - forum
     community-hub - Forum
     knowledge-hub - Forum
-    VC-Create-a-hangout-VC
+    NSFW-forum - chk
+    VC-tac-team 1
+    VC-tac-team 2
+    VC-tac-team 3
 multi-lingua - International Zone
     rules - Essential
     pl-only - Polish Only Text Channel
@@ -33,3 +38,13 @@ Sheriff's Office - Mod/Admin Center
     mod-center - For bot related drop-in drop-out of VC and General Security
     main-hall - General Admin and Moderator Discussion Area
     VC-Sherriff's 1v1 - a 1:1 chat with a Sheriff or Deputy - CREATE
+
+# FIXES - Repair Permissions for roles
+|Role           |PERMS                       |Priority           |Channel            |Category   |
+|---------------|----------------------------|-------------------|-------------------|-----------|
+|               |Verified/P-Ver              |Low                |Airlock            |Gatehouse  |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
+|               |                            |                   |                   |           |
