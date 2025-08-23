@@ -82,6 +82,10 @@ Gatehouse
     auto-roles
         @Everyone
             NO -  View Channel
+            NO  - Send Messages
+            NO  - Message Threads
+            NO  - Create Pub Threads
+            NO  - Create Priv Threads
         @Rules Accepted
             YES - View Channel
             NO  - Send Messages
@@ -93,6 +97,10 @@ Gatehouse
     roles
         @Everyone
             NO  - View Channel
+            NO  - Send Messages
+            NO  - Message Threads
+            NO  - Create Pub Threads
+            NO  - Create Priv Threads
         @Rules Accepted
             YES - View Channel
             NO  - Send Messages
@@ -216,6 +224,7 @@ Campfire
         @Ture CowBOY
         @Clint Eastwood
             Global Perms Apply
+            YES - View Channels
         @Everyone
             NO  - View Channels
         @Pilgrim
@@ -246,4 +255,81 @@ Campfire
             YES - Soundboard
             YES - Voice Activity
             YES - Use Activities
-All Remaining channels and categoories are setup to enable users to access what it marked for their role. 
+CowBOYs Category
+    Rules
+        @CowBOY
+            YES - View Channel
+            NO  - Send Messages
+            NO  - Message in Threads
+            NO  - Create Pub Thread
+            NO  - Create Private Thread
+            NO  - Embed Links
+            NO  - Attach Files
+            NO  - Add Reactions
+            YES - Read History
+    EVENTS Forum
+        @CowBOY
+            YES - View Channel
+            YES - Create Posts
+            YES - Message in Posts
+            YES - Embed Links
+            NO  - Attach Files
+            YES - Add Reactions
+            YES - Read History
+    Community Hub FORUM
+        @CowBOY
+            YES - View Channel
+            YES - Create Posts
+            YES - Message in Posts
+            YES - Embed Links
+            NO  - Attach Files
+            YES - Add Reactions
+            YES - Read History
+    Knowledge Hub
+        @CowBOY
+            YES - View Channel
+            NO  - Create Posts
+            YES - Message in Posts
+            NO  - Embed Links
+            NO  - Attach Files
+            YES - Add Reactions
+            YES - Read History
+    NSFW
+        @CowBOY
+            YES - View Channel
+            YES - Create Posts
+            YES - Message in Posts
+            NO  - Embed Links
+            YES - Attach Files
+            YES - Add Reactions
+            YES - Read History
+    VC-Tac-Team 1/2/3
+        @Cowboy
+            YES - View Channel
+            YES - Connect
+            YES - Speak
+            YES - Video
+            YES - Soundboard
+            YES - External Sounds
+            YES - Voice Activity
+            YES - Channel Status
+            YES - Embed Links
+            YES - Attach Files
+            YES - Add Reactions
+            NO  - External Emoji
+            NO  - External Stickers
+            YES - Read History
+Sheriff's Office
+    ALL
+        @Sheriff, @Deputy, @True CowBOY, @Clint Eastwood
+            YES - View Channels
+            DEF PERMS Apply
+Deep Space
+    ALL
+        YES - View Channel
+        YES - Connect
+        NO  - Speak
+        NO  - Video
+        NO  - Soundboard
+        NO  - External Sounds
+        NO  - Voice Activity
