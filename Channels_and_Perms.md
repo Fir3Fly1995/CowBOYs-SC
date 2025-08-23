@@ -54,6 +54,7 @@ Sheriff's Office - Mod/Admin Center
             Renegade
             Head Hunter
     Roles - Declares Roles - Lock out entries except for admins
+
 # What Role can do what?
         General Perms
     Channel
@@ -63,6 +64,9 @@ Sheriff's Office - Mod/Admin Center
         @Everyone
             YES - View Channel
             NO  - Send Messages
+            NO  - Message Threads
+            NO  - Create Pub Threads
+            NO  - Create Priv Threads
             YES - Read History
 Gatehouse
     airlock
