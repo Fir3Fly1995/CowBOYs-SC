@@ -207,6 +207,11 @@ Funky Stuff
             YES - Voice Activity
             YES - Use Activities
 Campfire
+        @Deputy
+        @Sherif
+        @Ture CowBOY
+        @Clint Eastwood
+            Global Perms Apply
         @Everyone
             NO  - View Channels
         @Pilgrim
@@ -224,5 +229,17 @@ Campfire
             YES - Soundboard
             YES - Voice Activity
             YES - Use Activities
-        @CowBOY 
-                        TERM        --      Return
+        @CowBOY
+            YES - View Channel
+            YES - Send Messages & Posts
+            YES - Send Messages in Threads & Posts
+            YES - Create Threads
+            YES - Add Reactions
+            YES - Read History
+            YES - Connect
+            YES - Speak
+            NO  - Video
+            YES - Soundboard
+            YES - Voice Activity
+            YES - Use Activities
+All Remaining channels and categoories are setup to enable users to access what it marked for their role. 
