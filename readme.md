@@ -1,7 +1,7 @@
 # This is a readme for Space CowBOYs!
 
-* Visit https://github.com/Fir3Fly1995/CowBOYs-SC for the repo.
-* Visit https://github.com/Fir3Fly1995/CowBOYs-SC/issues for Issues to Raise or respond to.
+* https://github.com/Fir3Fly1995/CowBOYs-SC for the repo.
+* https://github.com/Fir3Fly1995/CowBOYs-SC/issues for Issues to Raise or respond to.
 * https://github.com/users/Fir3Fly1995/projects/3/views/3 for the roadmap.
 * https://github.com/users/Fir3Fly1995/projects/3/views/2? for the current status of items.
 
