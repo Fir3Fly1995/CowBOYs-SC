@@ -1,9 +1,9 @@
 # This is a readme for Space CowBOYs!
 
 * https://github.com/Fir3Fly1995/CowBOYs-SC for the repo.
-* https://github.com/Fir3Fly1995/CowBOYs-SC/issues for Issues to Raise or respond to.
-* https://github.com/users/Fir3Fly1995/projects/3/views/3 for the roadmap.
-* https://github.com/users/Fir3Fly1995/projects/3/views/2? for the current status of items.
+* https://github.com/users/Fir3Fly1995/projects/3/views/1 For all tasks and status indications
+* https://github.com/users/Fir3Fly1995/projects/3/views/2 For a clear idea of progression for things. 
+* https://github.com/users/Fir3Fly1995/projects/3/views/3 For the expected Timeline of completion of things!
 
 This is the GitHub Repo to allow sync of files and plans, to raise issues and store important updates regarding progress on formulating the server
 
@@ -17,3 +17,4 @@ REPO MAP:
 * Roles_Message_LIVE.md - The current message for the roles channel.
 * Readme.md - This Document.
 * RSI_Page_Planfile.md
+* Rules.md - The Rules are found in here.
