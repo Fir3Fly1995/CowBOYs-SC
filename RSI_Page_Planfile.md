@@ -11,7 +11,8 @@ IPEOR is
 
 ## Description
     Space CowBOYs is an organisation of swashbuckling renegades out to have fun and build community. 
-    Find us on [url=https://discord.gg/dBwTzHkU5f]Discord[/url] - PLANETEXT: https://discord.gg/dBwTzHkU5f and say hi!
+    Find us on [url=https://discord.gg/dBwTzHkU5f]Discord[/url] and say hi!
+PLANETEXT: https://discord.gg/dBwTzHkU5f just in case you cannot actually see the code block to copy and paste.
 
 ## History
 What is our history, where we came from, and how we *battled.* Make it lore appropriate.
