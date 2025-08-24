@@ -9,12 +9,12 @@ This is the GitHub Repo to allow sync of files and plans, to raise issues and st
 
 REPO MAP:
 * [Channels and Permissions](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Channels_and_Perms.md)
-* CowBOYs_Logo_Official.png - The official logo of Space CowBOYs
-* Current_Roles_&_Regions.md - A list of our current roles and the regions that we conver. Regions are used to approximate the regions players are from. 
-* Discord-Planfile.md - The overarching plan for the Discord Server, rules are at the bottom.
-* Discord_Bot_Plan.md - Required before we can setup the Community fully so we don't break Odyn's bot.
-* Original Airlock Messages.md - As Title.
-* Roles_Message_LIVE.md - The current message for the roles channel.
+* [CowBOYs Official Logo](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/CowBOYs_Logo_Official.png)
+* [Current Roles & Regions](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Current_Roles_%26_Regions.md) to aid in approximating the regions players are from. 
+* [Discord Planfile](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Discord-Planfile.md) - The overarching plan for the Discord Server
+* [Discord Bot Plan](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Discord_Bot_Plan.md) - Required before we can setup the Community fully so we don't break Odyn's bot.
+* [Original Airlock Messages](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Original%20Airlock%20Messages.md)
+* [Live Roles Message](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Roles_Message_LIVE.md)
 * Readme.md - This Document.
-* RSI_Page_Planfile.md
-* Rules.md - The Rules are found in here.
+* [RSI Planfile](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/RSI_Page_Planfile.md) - The layout planfile for the RSI Org Page
+* [Suggested Rules per Category](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Rules.md)
