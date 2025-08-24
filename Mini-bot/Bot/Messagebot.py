@@ -2,8 +2,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-# Replace with your bot's token
-TOKEN = "MTQwOTE5Nzk3NDQxOTkzMTE4OQ.GEgCjw.jAG7Z16LdzWUoMHSOGg-rj05eoiJDpeoB_qcls"
+
+# Read the bot token from a file
+with open(r"D:\Github\Tokens\CowBOYs_Token.txt", "r", encoding="utf-8") as token_file:
+    TOKEN = token_file.read().strip()
 
 intents = discord.Intents.default()  # guilds is True by default
 
