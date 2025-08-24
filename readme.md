@@ -8,7 +8,7 @@
 This is the GitHub Repo to allow sync of files and plans, to raise issues and store important updates regarding progress on formulating the server
 
 REPO MAP:
-* [Channels and Permissions](Channels_And_Perms.md)
+* [Channels and Permissions](https://github.com/Fir3Fly1995/CowBOYs-SC/blob/main/Channels_and_Perms.md)
 * CowBOYs_Logo_Official.png - The official logo of Space CowBOYs
 * Current_Roles_&_Regions.md - A list of our current roles and the regions that we conver. Regions are used to approximate the regions players are from. 
 * Discord-Planfile.md - The overarching plan for the Discord Server, rules are at the bottom.
