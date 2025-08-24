@@ -10,7 +10,8 @@ IPEOR is
     Result - Take notes of the result then refine. 
 
 ## Description
-    Space CowBOYs is an organisation of swashbuckling renegades out to have fun and build community. Find us on [url=https://discord.gg/dBwTzHkU5f]Discord[/url] - PLANETEXT: https://discord.gg/dBwTzHkU5f and say hi!
+    Space CowBOYs is an organisation of swashbuckling renegades out to have fun and build community. 
+    Find us on [url=https://discord.gg/dBwTzHkU5f]Discord[/url] - PLANETEXT: https://discord.gg/dBwTzHkU5f and say hi!
 
 ## History
 What is our history, where we came from, and how we *battled.* Make it lore appropriate.
