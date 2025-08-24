@@ -55,281 +55,282 @@ Sheriff's Office - Mod/Admin Center
             Head Hunter
     Roles - Declares Roles - Lock out entries except for admins
 
+
 # What Role can do what?
-        General Perms
-    Channel
-        @ROLE
-            Permission
-    Rules
-        @Everyone
+            General Perms
+        Channel
+            @ROLE
+                Permission
+        Rules
+            @Everyone
+                YES - View Channel
+                NO  - Send Messages
+                NO  - Message Threads
+                NO  - Create Pub Threads
+                NO  - Create Priv Threads
+                YES - Read History
+    Gatehouse
+        airlock
+            @Everyone
+                NO -  View Channel
+            @Rules Accepted
+                YES - View Channel
+                YES - Read History
+            @Pilgrim
+                YES - View Channel
+                YES - Send Messages
+                YES - Read History
+        auto-roles
+            @Everyone
+                NO -  View Channel
+                NO  - Send Messages
+                NO  - Message Threads
+                NO  - Create Pub Threads
+                NO  - Create Priv Threads
+            @Rules Accepted
+                YES - View Channel
+                NO  - Send Messages
+                YES - Read History
+            @Pilgrim
+                YES - View Channel
+                NO  - Send Messages
+                YES - Read History
+        roles
+            @Everyone
+                NO  - View Channel
+                NO  - Send Messages
+                NO  - Message Threads
+                NO  - Create Pub Threads
+                NO  - Create Priv Threads
+            @Rules Accepted
+                YES - View Channel
+                NO  - Send Messages
+                YES - Read History
+            @Pilgrim
+                YES - View Channel
+                NO  - Send Messages
+                YES - Read History
+    Open Events
+            @Deputy
+            @Sheriff
+            @True CowBOY
+            @Clint Eastwood
+                Global Perms Apply
+        Event-Rules
+            @Everyone
+                NO  - View Channel
+            @Pilgrim
+                YES - View Channel
+                NO  - Send Messages
+                YES - Read History
+            @Vagabond
+                YES - View Channel
+                NO  - Send Messages
+                YES - Read History
+            @Friendly Traveller
+                YES - View Channel
+                NO  - Send Messages
+                NO  - Add Reactions
+                YES - Read History
+            @CowBOY
+                YES - View Channel
+                NO  - Send Messages
+                YES - Read History
+        Event-Briefs - FORUM
+            @Everyone
+                NO  - View Channel
+            @Pilgrim
+                YES - View Channel
+                NO  - Create Posts
+                YES - Messages in Posts
+                YES - Add Reactions
+                YES - Read History
+            @Vagabond
+                YES - View Channel
+                NO  - Create Posts
+                YES - Messages in Posts
+                YES - Add Reactions
+                YES - Read History
+            @Friendly Traveller
+                YES - View Channel
+                NO  - Create Posts
+                NO  - Message in Posts
+                NO  - Read History
+            @CowBOY
+                YES - View Channel
+                YES - Create Posts
+                YES - Send Messages in Posts
+                YES - Add Reactions
+                YES - Read History
+    Funky Stuff
+            @Deputy
+            @Sheriff
+            @True CowBOY
+            @Clint Eastwood
+                Global Perms Apply
+            @Everyone
+                NO  - View Channels
+            @Pilgrim
+                YES - View Channel
+                NO  - Send Messages & Posts
+                YES - Send Messages in Threads & Posts
+                YES - Add Reactions
+                YES - Read History
+                YES - Connect
+                YES - Speak
+                NO  - Video
+                YES - Soundboard
+                YES - Voice Activity
+                YES - Use Activities
+            @Vagabond
+                YES - View Channel
+                NO  - Send Messages & Posts
+                YES - Send Messages in Threads & Posts
+                YES - Add Reactions
+                YES - Read History
+                YES - Connect
+                YES - Speak
+                NO  - Video
+                YES - Soundboard
+                YES - Voice Activity
+                YES - Use Activities
+            @Friendly Traveller
+                YES - View Channel
+                NO  - Send Messages & Posts
+                YES - Send Messages in Threads & Posts
+                YES - Add Reactions
+                NO  - Read History
+                YES - Connect
+                YES - Speak
+                NO  - Video
+                YES - Soundboard
+                YES - Voice Activity
+                YES - Use Activities
+            @CowBOY
+                YES - View Channel
+                NO  - Send Messages & Posts
+                YES - Send Messages in Threads & Posts
+                YES - Create Threads
+                YES - Add Reactions
+                YES - Read History
+                YES - Connect
+                YES - Speak
+                NO  - Video
+                YES - Soundboard
+                YES - Voice Activity
+                YES - Use Activities
+    Campfire
+            @Deputy
+            @Sherif
+            @Ture CowBOY
+            @Clint Eastwood
+                Global Perms Apply
+                YES - View Channels
+            @Everyone
+                NO  - View Channels
+            @Pilgrim
+                NO  - View Channels
+            @Vagabond
+                YES - View Channel
+                YES - Send Messages & Posts
+                YES - Send Messages in Threads & Posts
+                YES - Create Threads
+                YES - Add Reactions
+                YES - Read History
+                YES - Connect
+                YES - Speak
+                NO  - Video
+                YES - Soundboard
+                YES - Voice Activity
+                YES - Use Activities
+            @CowBOY
+                YES - View Channel
+                YES - Send Messages & Posts
+                YES - Send Messages in Threads & Posts
+                YES - Create Threads
+                YES - Add Reactions
+                YES - Read History
+                YES - Connect
+                YES - Speak
+                NO  - Video
+                YES - Soundboard
+                YES - Voice Activity
+                YES - Use Activities
+    CowBOYs Category
+        Rules
+            @CowBOY
+                YES - View Channel
+                NO  - Send Messages
+                NO  - Message in Threads
+                NO  - Create Pub Thread
+                NO  - Create Private Thread
+                NO  - Embed Links
+                NO  - Attach Files
+                NO  - Add Reactions
+                YES - Read History
+        EVENTS Forum
+            @CowBOY
+                YES - View Channel
+                YES - Create Posts
+                YES - Message in Posts
+                YES - Embed Links
+                NO  - Attach Files
+                YES - Add Reactions
+                YES - Read History
+        Community Hub FORUM
+            @CowBOY
+                YES - View Channel
+                YES - Create Posts
+                YES - Message in Posts
+                YES - Embed Links
+                NO  - Attach Files
+                YES - Add Reactions
+                YES - Read History
+        Knowledge Hub
+            @CowBOY
+                YES - View Channel
+                NO  - Create Posts
+                YES - Message in Posts
+                NO  - Embed Links
+                NO  - Attach Files
+                YES - Add Reactions
+                YES - Read History
+        NSFW
+            @CowBOY
+                YES - View Channel
+                YES - Create Posts
+                YES - Message in Posts
+                NO  - Embed Links
+                YES - Attach Files
+                YES - Add Reactions
+                YES - Read History
+        VC-Tac-Team 1/2/3
+            @Cowboy
+                YES - View Channel
+                YES - Connect
+                YES - Speak
+                YES - Video
+                YES - Soundboard
+                YES - External Sounds
+                YES - Voice Activity
+                YES - Channel Status
+                YES - Embed Links
+                YES - Attach Files
+                YES - Add Reactions
+                NO  - External Emoji
+                NO  - External Stickers
+                YES - Read History
+    Sheriff's Office
+        ALL
+            @Sheriff, @Deputy, @True CowBOY, @Clint Eastwood
+                YES - View Channels
+                DEF PERMS Apply
+    Deep Space
+        ALL
             YES - View Channel
-            NO  - Send Messages
-            NO  - Message Threads
-            NO  - Create Pub Threads
-            NO  - Create Priv Threads
-            YES - Read History
-Gatehouse
-    airlock
-        @Everyone
-            NO -  View Channel
-        @Rules Accepted
-            YES - View Channel
-            YES - Read History
-        @Pilgrim
-            YES - View Channel
-            YES - Send Messages
-            YES - Read History
-    auto-roles
-        @Everyone
-            NO -  View Channel
-            NO  - Send Messages
-            NO  - Message Threads
-            NO  - Create Pub Threads
-            NO  - Create Priv Threads
-        @Rules Accepted
-            YES - View Channel
-            NO  - Send Messages
-            YES - Read History
-        @Pilgrim
-            YES - View Channel
-            NO  - Send Messages
-            YES - Read History
-    roles
-        @Everyone
-            NO  - View Channel
-            NO  - Send Messages
-            NO  - Message Threads
-            NO  - Create Pub Threads
-            NO  - Create Priv Threads
-        @Rules Accepted
-            YES - View Channel
-            NO  - Send Messages
-            YES - Read History
-        @Pilgrim
-            YES - View Channel
-            NO  - Send Messages
-            YES - Read History
-Open Events
-        @Deputy
-        @Sheriff
-        @True CowBOY
-        @Clint Eastwood
-            Global Perms Apply
-    Event-Rules
-        @Everyone
-            NO  - View Channel
-        @Pilgrim
-            YES - View Channel
-            NO  - Send Messages
-            YES - Read History
-        @Vagabond
-            YES - View Channel
-            NO  - Send Messages
-            YES - Read History
-        @Friendly Traveller
-            YES - View Channel
-            NO  - Send Messages
-            NO  - Add Reactions
-            YES - Read History
-        @CowBOY
-            YES - View Channel
-            NO  - Send Messages
-            YES - Read History
-    Event-Briefs - FORUM
-        @Everyone
-            NO  - View Channel
-        @Pilgrim
-            YES - View Channel
-            NO  - Create Posts
-            YES - Messages in Posts
-            YES - Add Reactions
-            YES - Read History
-        @Vagabond
-            YES - View Channel
-            NO  - Create Posts
-            YES - Messages in Posts
-            YES - Add Reactions
-            YES - Read History
-        @Friendly Traveller
-            YES - View Channel
-            NO  - Create Posts
-            NO  - Message in Posts
-            NO  - Read History
-        @CowBOY
-            YES - View Channel
-            YES - Create Posts
-            YES - Send Messages in Posts
-            YES - Add Reactions
-            YES - Read History
-Funky Stuff
-        @Deputy
-        @Sheriff
-        @True CowBOY
-        @Clint Eastwood
-            Global Perms Apply
-        @Everyone
-            NO  - View Channels
-        @Pilgrim
-            YES - View Channel
-            NO  - Send Messages & Posts
-            YES - Send Messages in Threads & Posts
-            YES - Add Reactions
-            YES - Read History
             YES - Connect
-            YES - Speak
+            NO  - Speak
             NO  - Video
-            YES - Soundboard
-            YES - Voice Activity
-            YES - Use Activities
-        @Vagabond
-            YES - View Channel
-            NO  - Send Messages & Posts
-            YES - Send Messages in Threads & Posts
-            YES - Add Reactions
-            YES - Read History
-            YES - Connect
-            YES - Speak
-            NO  - Video
-            YES - Soundboard
-            YES - Voice Activity
-            YES - Use Activities
-        @Friendly Traveller
-            YES - View Channel
-            NO  - Send Messages & Posts
-            YES - Send Messages in Threads & Posts
-            YES - Add Reactions
-            NO  - Read History
-            YES - Connect
-            YES - Speak
-            NO  - Video
-            YES - Soundboard
-            YES - Voice Activity
-            YES - Use Activities
-        @CowBOY
-            YES - View Channel
-            NO  - Send Messages & Posts
-            YES - Send Messages in Threads & Posts
-            YES - Create Threads
-            YES - Add Reactions
-            YES - Read History
-            YES - Connect
-            YES - Speak
-            NO  - Video
-            YES - Soundboard
-            YES - Voice Activity
-            YES - Use Activities
-Campfire
-        @Deputy
-        @Sherif
-        @Ture CowBOY
-        @Clint Eastwood
-            Global Perms Apply
-            YES - View Channels
-        @Everyone
-            NO  - View Channels
-        @Pilgrim
-            NO  - View Channels
-        @Vagabond
-            YES - View Channel
-            YES - Send Messages & Posts
-            YES - Send Messages in Threads & Posts
-            YES - Create Threads
-            YES - Add Reactions
-            YES - Read History
-            YES - Connect
-            YES - Speak
-            NO  - Video
-            YES - Soundboard
-            YES - Voice Activity
-            YES - Use Activities
-        @CowBOY
-            YES - View Channel
-            YES - Send Messages & Posts
-            YES - Send Messages in Threads & Posts
-            YES - Create Threads
-            YES - Add Reactions
-            YES - Read History
-            YES - Connect
-            YES - Speak
-            NO  - Video
-            YES - Soundboard
-            YES - Voice Activity
-            YES - Use Activities
-CowBOYs Category
-    Rules
-        @CowBOY
-            YES - View Channel
-            NO  - Send Messages
-            NO  - Message in Threads
-            NO  - Create Pub Thread
-            NO  - Create Private Thread
-            NO  - Embed Links
-            NO  - Attach Files
-            NO  - Add Reactions
-            YES - Read History
-    EVENTS Forum
-        @CowBOY
-            YES - View Channel
-            YES - Create Posts
-            YES - Message in Posts
-            YES - Embed Links
-            NO  - Attach Files
-            YES - Add Reactions
-            YES - Read History
-    Community Hub FORUM
-        @CowBOY
-            YES - View Channel
-            YES - Create Posts
-            YES - Message in Posts
-            YES - Embed Links
-            NO  - Attach Files
-            YES - Add Reactions
-            YES - Read History
-    Knowledge Hub
-        @CowBOY
-            YES - View Channel
-            NO  - Create Posts
-            YES - Message in Posts
-            NO  - Embed Links
-            NO  - Attach Files
-            YES - Add Reactions
-            YES - Read History
-    NSFW
-        @CowBOY
-            YES - View Channel
-            YES - Create Posts
-            YES - Message in Posts
-            NO  - Embed Links
-            YES - Attach Files
-            YES - Add Reactions
-            YES - Read History
-    VC-Tac-Team 1/2/3
-        @Cowboy
-            YES - View Channel
-            YES - Connect
-            YES - Speak
-            YES - Video
-            YES - Soundboard
-            YES - External Sounds
-            YES - Voice Activity
-            YES - Channel Status
-            YES - Embed Links
-            YES - Attach Files
-            YES - Add Reactions
-            NO  - External Emoji
-            NO  - External Stickers
-            YES - Read History
-Sheriff's Office
-    ALL
-        @Sheriff, @Deputy, @True CowBOY, @Clint Eastwood
-            YES - View Channels
-            DEF PERMS Apply
-Deep Space
-    ALL
-        YES - View Channel
-        YES - Connect
-        NO  - Speak
-        NO  - Video
-        NO  - Soundboard
-        NO  - External Sounds
-        NO  - Voice Activity
+            NO  - Soundboard
+            NO  - External Sounds
+            NO  - Voice Activity
