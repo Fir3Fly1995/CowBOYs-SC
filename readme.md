@@ -1,15 +1,14 @@
 # This is a readme for Space CowBOYs!
-The actual map to where everything can be found! Enjoy! 
-### Links
-* https://github.com/Fir3Fly1995/CowBOYs-SC for the repo.
-* https://github.com/users/Fir3Fly1995/projects/3/views/1 For all tasks and status indications
-* https://github.com/users/Fir3Fly1995/projects/3/views/2 For a clear idea of progression for things. 
-* https://github.com/users/Fir3Fly1995/projects/3/views/3 For the expected Timeline of completion of things!
+
+* Click [here for the repo](https://github.com/Fir3Fly1995/CowBOYs-SC)
+* Click [here for Priority Backlog](https://github.com/users/Fir3Fly1995/projects/3/views/1)
+* Click [here for Status Details](https://github.com/users/Fir3Fly1995/projects/3/views/2)
+* Click [here for Timeline](https://github.com/users/Fir3Fly1995/projects/3/views/3)
 
 This is the GitHub Repo to allow sync of files and plans, to raise issues and store important updates regarding progress on formulating the server
 
-### REPO MAP:
-* Channels_And_Perms.md - full channel list and permissions for each category or channel per role.
+REPO MAP:
+* Channels_And_Perms.md
 * CowBOYs_Logo_Official.png - The official logo of Space CowBOYs
 * Current_Roles_&_Regions.md - A list of our current roles and the regions that we conver. Regions are used to approximate the regions players are from. 
 * Discord-Planfile.md - The overarching plan for the Discord Server, rules are at the bottom.
