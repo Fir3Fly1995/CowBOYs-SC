@@ -22,3 +22,11 @@ Why we do what we do. How we will do it. Dont forget that we are doing it for to
 
 ## Charter
 This is our constitution. As a syndicate, we must have rules that we will never break. These are Constitutional Rules (or laws, if you want to call them that). The Charter will protect low-ranked members from high-ranked members, will dictate what we consider as "Crossing the line" and effectively, our morals. 
+
+
+# Suggestions.
+### History 101: Stanton Edition
+##### 2951-2954: Xenothreat Incursions from Pyro
+	Since 2951 up to 2954 Xenothreat, a terror organisation kept breaching into Stanton, culminating in the Xenothreat Incursion into Stanton right before Pyro was brought online.
+This could be a potential starting point
+
