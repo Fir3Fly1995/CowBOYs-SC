@@ -1,0 +1,8 @@
+Skip.Start.
+CH-ID<#1414600989016723614>RULES
+MSG;
+hello. Please say hi.
+The Bot Overlords demand it!
+EMOTE_1;✅ "Happy"
+Give_Role_1; "Rules Accepted"
+End.

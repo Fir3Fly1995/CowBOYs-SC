@@ -74,17 +74,21 @@ class RulesBot(commands.Bot):
             emotes = {}
             # Parse emotes and role names
             for i, line in enumerate(lines):
-                emote_match = re.search(r'EMOTE_(\d+);\s*(.+?)\s*\"(.+?)\"', line)
+                # This regex now correctly captures both unicode and custom emojis
+                emote_match = re.search(r'EMOTE_(\d+);\s*(<.+?|.+?)\s*\"(.+?)\"', line)
                 if emote_match:
+                    # Stripping the whitespace from the captured emoji string
                     emote = emote_match.group(2).strip()
                     label = emote_match.group(3).strip()
+                    emote_number = emote_match.group(1)
                     
                     is_toggle = False
                     # Check for 'Toggle-Role' on the next line
                     if i + 1 < len(lines) and lines[i+1].strip().lower() == "toggle-role":
                         is_toggle = True
                     
-                    give_role_match = re.search(f'Give_Role_{emote_match.group(1)};\s*\"(.+?)\"', block)
+                    # Ensure the emote number matches the give role number
+                    give_role_match = re.search(f'Give_Role_{emote_number};\s*\"(.+?)\"', block)
                     if give_role_match:
                         role_name = give_role_match.group(1).strip()
                         emotes[emote] = {"label": label, "role_name": role_name, "is_toggle": is_toggle}
@@ -184,8 +188,13 @@ async def setuproles(interaction: discord.Interaction):
         message_to_react = message_to_edit if message_to_edit else await channel.fetch_message(config["message_id"])
         if message_to_react:
             for emote in config["emotes"]:
-                await message_to_react.add_reaction(emote)
-
+                try:
+                    await message_to_react.add_reaction(emote)
+                except discord.HTTPException as e:
+                    print(f"Error adding reaction {emote}: {e}")
+                    print("This is likely due to an invalid emoji format in your roles.txt file.")
+                    print("Please ensure you are using a raw unicode emoji or the full custom emoji format (<:name:id>).")
+                    
         # Mark the block as skipped so it doesn't run again on the next /setuproles
         bot._mark_block_as_skipped(channel_id)
 
@@ -203,9 +212,14 @@ async def on_raw_reaction_add(payload):
         if guild is None:
             return
 
-        # Fetch the member object from the guild
-        member = guild.get_member(payload.user_id)
-        if member is None or member.bot:
+        # Explicitly fetch the member from the API to ensure the object is up-to-date
+        try:
+            member = await guild.fetch_member(payload.user_id)
+        except discord.NotFound:
+            print(f"Member with ID {payload.user_id} not found.")
+            return
+
+        if member.bot:
             return
             
         emoji = str(payload.emoji)
@@ -243,8 +257,14 @@ async def on_raw_reaction_remove(payload):
         if guild is None:
             return
 
-        member = guild.get_member(payload.user_id)
-        if member is None or member.bot:
+        # Explicitly fetch the member from the API to ensure the object is up-to-date
+        try:
+            member = await guild.fetch_member(payload.user_id)
+        except discord.NotFound:
+            print(f"Member with ID {payload.user_id} not found.")
+            return
+
+        if member.bot:
             return
 
         emoji = str(payload.emoji)
