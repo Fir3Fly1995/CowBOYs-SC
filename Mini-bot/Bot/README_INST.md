@@ -1,40 +1,6 @@
 The roles-bot of the Cowboy's Messenger will read from roles.txt (currently located on drive D: on Fir3Fly's PC.) It will be moved into the GitHub Repo so it can pull directly from there. 
 
 # How it works
-### Prompts Key
-    Start.
-Used to flag the start of a block of text for mass updates. 
-    CH-ID<#xxxxxxxxxxxxxxxxx>CH_NAME
-Identifies the channel for the bot to post the reaction message/role/text The CH_NAME above is a placeholder, to make it human readable, so you can identify the channel.
-    MSG-ID:xxxxxxxxxxxxxxxxx
-The ID of a pre-existing message
-Use:
-    Replace_MSG
-followed by
-    MSG;
-    enter message
-    text in
-    here
-to replace a pre-existing message
-
-To make a new message, just use
-    MSG;
-then hit the enter key, and write your message to be mirrored into the channel. 
-
-    MSG-ID:
-can be used without the Replace_MSG below it to just identify a pre-existing message for the attachments of roles. 
-
-Place
-    EMOTE_x; :emote: "text"
-to use an emoji emote. You must use the emoji, leave the "text" part blank as 
-    ""
-to not include any text. 
-
-The use of the 
-    Toggle-Role
-function will allow the user to toggle a role on/off instead of just the 
-    Give_Role_x;
-function alone. 
 
 ### The Order of Functions
 Skip. (This will be in place of Start. if the bot has handled it already and will skip this piece if the Skip. command is used)
@@ -43,13 +9,15 @@ CH-ID<#xxxxxxxxxxxxxx>CHANNEL_NAME (This always comes next)
 MSG-ID:xxxxxxxxxxxx (If it applies, this goes next)
 Replace_MSG (If you want to replace a message, this goes next)
 MSG; (This comes next int he flow)
-EMOTE_x; <":Emote:MESSAGE"> (This goes next. x is a number, place each emote on a new line)
+EMOTE_x; <":Emote:MESSAGE"> (Use for Reaction roles Only. This goes next. x is a number, place each emote on a new line)
+MK-BTN_x; Colour=COLOUR; Emoji; Text (Makes a button (button x (X being a number) for a colour,, either red, green, blue or orange) with an optional emoji (leave out "emoji;" entirely to not require an emoji) then the text associated with the button)
 Toggle-Role (this allows a role to be toggled by the user clicking multiple times.)
+Static-Role (The user can only interract once to get the associated role, subsequent clicks by the user will be ignored)
 Give_Role_x; "Role Name" (This is next)
 End. (This goes last, this tells the bot to move to the next Start. identifier)
 
 
-EXAMPLE 1: Raw Start
+### EXAMPLE 1: Raw Start
 
 Start.
 CH-ID<#1404524405207339149>RULES
@@ -67,7 +35,7 @@ EMOTE_1; :White_Check_Mark: "Accept"
 Give_Role_1; "Rules Accepted"
 End.
 
-EXAMPLE 2: Existing Message Start
+### EXAMPLE 2: Existing Message Start
 
 Start.
 CH-ID<#1404524405207339149>RULES
@@ -76,7 +44,7 @@ EMOTE_1; :White_Check_Mark: "Accept"
 Give_Role_1; "Rules Accepted"
 End.
 
-EXAMPLE 3: Replace Message Start
+### EXAMPLE 3: Replace Message Start
 
 Start.
 CH-ID<#1404524405207339149>RULES

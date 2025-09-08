@@ -21,6 +21,7 @@ class RulesBot(commands.Bot):
         # We need to pass the updated intents to the bot
         super().__init__(command_prefix="!", intents=intents)
         self.reaction_roles = {}
+        self.button_roles = {}
         self.roles_file_path = r"D:\GitHub\CowBOYs-SC\Mini-bot\Bot\roles.txt"
 
     async def setup_hook(self):
@@ -68,10 +69,20 @@ class RulesBot(commands.Bot):
             message_text = None
             if "MSG;" in block:
                 msg_start = block.find("MSG;") + 4
-                msg_end = block.find("EMOTE_1;", msg_start)
-                message_text = block[msg_start:msg_end].strip()
+                # We now need to find the end of the message text, which can be either EMOTE or MK-BTN
+                msg_end_emote = block.find("EMOTE_1;", msg_start)
+                msg_end_btn = block.find("MK-BTN_1;", msg_start)
+
+                if msg_end_emote != -1 and (msg_end_btn == -1 or msg_end_emote < msg_end_btn):
+                    message_text = block[msg_start:msg_end_emote].strip()
+                elif msg_end_btn != -1:
+                    message_text = block[msg_start:msg_end_btn].strip()
+                else:
+                    message_text = block[msg_start:].strip()
             
             emotes = {}
+            buttons = {}
+            
             # Parse emotes and role names
             for i, line in enumerate(lines):
                 # This regex now correctly captures both unicode and custom emojis
@@ -92,43 +103,126 @@ class RulesBot(commands.Bot):
                     if give_role_match:
                         role_name = give_role_match.group(1).strip()
                         emotes[emote] = {"label": label, "role_name": role_name, "is_toggle": is_toggle}
-            
+                        
+            # Parse buttons and role names
+            for i, line in enumerate(lines):
+                button_match = re.search(r'MK-BTN_(\d+);\s*Colour=(\S+);\s*Emoji=(\S+);\s*Text=\"(.+?)\"', line)
+                if button_match:
+                    button_number = button_match.group(1)
+                    color = button_match.group(2)
+                    emoji = button_match.group(3)
+                    text = button_match.group(4)
+                    
+                    is_toggle = False
+                    if i + 1 < len(lines) and lines[i+1].strip().lower() == "toggle-role":
+                        is_toggle = True
+                    
+                    give_role_match = re.search(f'Give_Role_{button_number};\s*\"(.+?)\"', block)
+                    if give_role_match:
+                        role_name = give_role_match.group(1).strip()
+                        buttons[button_number] = {
+                            "color": color.upper(),
+                            "emoji": emoji,
+                            "text": text,
+                            "role_name": role_name,
+                            "is_toggle": is_toggle
+                        }
+
             parsed_data[channel_id] = {
                 "message_id": message_id,
                 "replace_msg": replace_msg,
                 "message_text": message_text,
-                "emotes": emotes
+                "emotes": emotes,
+                "buttons": buttons
             }
         
         # Populate the bot's reaction_roles dictionary with the new structure
         self.reaction_roles = {}
+        self.button_roles = {}
         for channel_id, data in parsed_data.items():
             if data['message_id']:
                 self.reaction_roles[str(data['message_id'])] = data['emotes']
+                self.button_roles[str(data['message_id'])] = data['buttons']
         return parsed_data
 
 
-    def _mark_block_as_skipped(self, channel_id):
+    def _mark_block_as_skipped(self, channel_id, message_id):
         """
-        Rewrites the roles.txt file, adding 'Skip.' to the processed block.
+        Rewrites the roles.txt file, replacing 'Start.' with 'Skip.'
+        and adding the message ID below the channel ID.
         """
         if not os.path.exists(self.roles_file_path):
             return
 
         with open(self.roles_file_path, "r", encoding="utf-8") as f:
             content = f.read()
+        
+        # Regex to find the entire block that starts with 'Start.' and contains the specific CH-ID
+        block_pattern = re.compile(f'(Start\\.\\s*\\n\\s*CH-ID<#{channel_id}>.*?\\n\\s*End\\.)', re.DOTALL | re.IGNORECASE)
+        match = block_pattern.search(content)
 
-        pattern = re.compile(f'Start\\.\\s*CH-ID<#{channel_id}>', re.DOTALL | re.IGNORECASE)
-        match = pattern.search(content)
+        if not match:
+            return
 
-        if match:
-            start_index = match.start()
-            new_content = content[:start_index] + "Skip." + content[start_index:]
-            with open(self.roles_file_path, "w", encoding="utf-8") as f:
-                f.write(new_content)
+        full_block = match.group(0)
+        
+        # 1. Replace 'Start.' with 'Skip.'
+        new_block = full_block.replace("Start.", "Skip.", 1)
+        
+        # 2. Add the MSG-ID right after the CH-ID line.
+        # First, remove any existing MSG-ID to prevent duplicates.
+        new_block = re.sub(r'MSG-ID:\d+\s*\n', '', new_block, flags=re.IGNORECASE)
+        
+        ch_id_line = f"CH-ID<#{channel_id}>"
+        # Now, insert the new MSG-ID line right after the CH-ID line.
+        new_block = re.sub(
+            f'({re.escape(ch_id_line)})',
+            f'\\1\nMSG-ID:{message_id}',
+            new_block,
+            1,
+            flags=re.IGNORECASE
+        )
+        
+        # Replace the original block in the content with the new, modified block.
+        final_content = content.replace(full_block, new_block, 1)
+
+        with open(self.roles_file_path, "w", encoding="utf-8") as f:
+            f.write(final_content)
 
 
 bot = RulesBot()
+
+class RoleButton(discord.ui.Button):
+    def __init__(self, color, emoji, text, role_name, is_toggle, bot):
+        # The fix is here: use getattr to get the correct button style
+        super().__init__(style=getattr(discord.ButtonStyle, color.lower()), emoji=emoji, label=text)
+        self.role_name = role_name
+        self.is_toggle = is_toggle
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        member = interaction.user
+        
+        role = discord.utils.get(guild.roles, name=self.role_name)
+        
+        if role is not None:
+            if self.is_toggle:
+                if role in member.roles:
+                    await member.remove_roles(role)
+                    await interaction.followup.send(f"You have removed the `{role.name}` role.", ephemeral=True)
+                else:
+                    await member.add_roles(role)
+                    await interaction.followup.send(f"You have been given the `{role.name}` role.", ephemeral=True)
+            else:
+                if role not in member.roles:
+                    await member.add_roles(role)
+                    await interaction.followup.send(f"You have been given the `{role.name}` role.", ephemeral=True)
+                else:
+                    await interaction.followup.send(f"You already have the `{role.name}` role.", ephemeral=True)
+        else:
+            await interaction.followup.send(f"Role `{self.role_name}` not found. Please contact an admin.", ephemeral=True)
 
 
 @bot.tree.command(name="message", description="Post contents of Message.txt from absolute path.")
@@ -176,13 +270,36 @@ async def setuproles(interaction: discord.Interaction):
                 await message_to_edit.edit(content=config["message_text"])
 
         # Case 2: Create a new message
-        if not config["message_id"] and config["message_text"]:
-            reaction_message = await channel.send(content=config["message_text"])
-            config["message_id"] = reaction_message.id
+        view = discord.ui.View(timeout=None)
+        
+        if config["buttons"]:
+            for _, btn_data in config["buttons"].items():
+                button = RoleButton(
+                    color=btn_data['color'],
+                    emoji=btn_data['emoji'],
+                    text=btn_data['text'],
+                    role_name=btn_data['role_name'],
+                    is_toggle=btn_data['is_toggle'],
+                    bot=bot
+                )
+                view.add_item(button)
+        
+        if not config["message_id"]:
+            if config["message_text"]:
+                reaction_message = await channel.send(
+                    content=config["message_text"],
+                    view=view
+                )
+                config["message_id"] = reaction_message.id
+                
+                # Now we need to update the REACTION_ROLES and button_roles dictionaries with the new message ID
+                bot.reaction_roles[str(reaction_message.id)] = config['emotes']
+                bot.button_roles[str(reaction_message.id)] = config['buttons']
+                print(f"New message created with ID: {reaction_message.id}")
             
-            # Now we need to update the REACTION_ROLES dictionary with the new message ID
-            bot.reaction_roles[str(reaction_message.id)] = config['emotes']
-            print(f"New message created with ID: {reaction_message.id}")
+        else: # Add view to existing message
+            if config["buttons"]:
+                await message_to_edit.edit(view=view)
         
         # Add reactions to the message
         message_to_react = message_to_edit if message_to_edit else await channel.fetch_message(config["message_id"])
@@ -196,7 +313,7 @@ async def setuproles(interaction: discord.Interaction):
                     print("Please ensure you are using a raw unicode emoji or the full custom emoji format (<:name:id>).")
                     
         # Mark the block as skipped so it doesn't run again on the next /setuproles
-        bot._mark_block_as_skipped(channel_id)
+        bot._mark_block_as_skipped(channel_id, config["message_id"])
 
     await interaction.followup.send("Roles messages have been processed.", ephemeral=True)
     

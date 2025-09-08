@@ -1,8 +1,18 @@
-Skip.Start.
-CH-ID<#1414600989016723614>RULES
+Skip.
+CH-ID<#1414600989016723614>
+MSG-ID:1414712774390452354RULES
 MSG;
 hello. Please say hi.
 The Bot Overlords demand it!
-EMOTE_1;✅ "Happy"
+MK-BTN_1; Colour=GREEN; Emoji=👍; Text="Accept Rules"
 Give_Role_1; "Rules Accepted"
+End.
+
+Skip.
+CH-ID<#1414600817633132659>
+MSG-ID:1414715053256605806
+MSG;
+This is a test message, please react!
+EMOTE_1;😀
+Toggle-Role
 End.
