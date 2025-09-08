@@ -117,14 +117,14 @@ class RulesBot(commands.Bot):
                     if i + 1 < len(lines) and lines[i+1].strip().lower() == "toggle-role":
                         is_toggle = True
                     
-                    give_role_match = re.search(f'Give_Role_{button_number};\s*\"(.+?)\"', block)
-                    if give_role_match:
-                        role_name = give_role_match.group(1).strip()
+                    give_role_matches = re.findall(f'Give_Role_{button_number};\s*\"(.+?)\"', block)
+                    if give_role_matches:
+                        role_names = [r.strip() for r in give_role_matches]
                         buttons[button_number] = {
                             "color": color.upper(),
                             "emoji": emoji,
                             "text": text,
-                            "role_name": role_name,
+                            "role_names": role_names,
                             "is_toggle": is_toggle
                         }
 
@@ -193,10 +193,19 @@ class RulesBot(commands.Bot):
 bot = RulesBot()
 
 class RoleButton(discord.ui.Button):
-    def __init__(self, color, emoji, text, role_name, is_toggle, bot):
-        # The fix is here: use getattr to get the correct button style
-        super().__init__(style=getattr(discord.ButtonStyle, color.lower()), emoji=emoji, label=text)
-        self.role_name = role_name
+    COLOR_MAP = {
+        "green": discord.ButtonStyle.success,
+        "red": discord.ButtonStyle.danger,
+        "blue": discord.ButtonStyle.primary,
+        "blurple": discord.ButtonStyle.primary,
+        "grey": discord.ButtonStyle.secondary,
+        "gray": discord.ButtonStyle.secondary,
+    }
+
+    def __init__(self, color, emoji, text, role_names, is_toggle, bot):
+        style = self.COLOR_MAP.get(color.lower(), discord.ButtonStyle.secondary)
+        super().__init__(style=style, emoji=emoji, label=text)
+        self.role_names = role_names
         self.is_toggle = is_toggle
         self.bot = bot
 
@@ -204,25 +213,39 @@ class RoleButton(discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
         member = interaction.user
-        
-        role = discord.utils.get(guild.roles, name=self.role_name)
-        
-        if role is not None:
-            if self.is_toggle:
+
+        roles = [discord.utils.get(guild.roles, name=role_name) for role_name in self.role_names]
+        roles = [role for role in roles if role is not None]
+
+        if not roles:
+            await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
+            return
+
+        if self.is_toggle:
+            # Toggle all roles
+            for role in roles:
                 if role in member.roles:
                     await member.remove_roles(role)
-                    await interaction.followup.send(f"You have removed the `{role.name}` role.", ephemeral=True)
                 else:
                     await member.add_roles(role)
-                    await interaction.followup.send(f"You have been given the `{role.name}` role.", ephemeral=True)
-            else:
+            await interaction.followup.send(
+                f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
+            )
+        else:
+            # Add all roles if not already present
+            added = []
+            for role in roles:
                 if role not in member.roles:
                     await member.add_roles(role)
-                    await interaction.followup.send(f"You have been given the `{role.name}` role.", ephemeral=True)
-                else:
-                    await interaction.followup.send(f"You already have the `{role.name}` role.", ephemeral=True)
-        else:
-            await interaction.followup.send(f"Role `{self.role_name}` not found. Please contact an admin.", ephemeral=True)
+                    added.append(role.name)
+            if added:
+                await interaction.followup.send(
+                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    "You already have all the roles.", ephemeral=True
+                )
 
 
 @bot.tree.command(name="message", description="Post contents of Message.txt from absolute path.")
@@ -278,7 +301,7 @@ async def setuproles(interaction: discord.Interaction):
                     color=btn_data['color'],
                     emoji=btn_data['emoji'],
                     text=btn_data['text'],
-                    role_name=btn_data['role_name'],
+                    role_names=btn_data['role_names'],
                     is_toggle=btn_data['is_toggle'],
                     bot=bot
                 )
