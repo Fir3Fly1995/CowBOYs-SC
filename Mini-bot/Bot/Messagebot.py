@@ -1,13 +1,27 @@
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 import os
 import re
+import requests
 
-# To securely handle tokens, consider using environment variables instead of
-# hardcoded paths. For this example, we'll keep the file read.
-with open(r"D:\Github\Tokens\CowBOYs_Token.txt", "r", encoding="utf-8") as token_file:
-    TOKEN = token_file.read().strip()
+
+# --- GitHub Integration: Fetch token from env and download files from GitHub ---
+TOKEN = os.getenv("CRUEL_STARS_TOKEN")
+BASE_URL = "https://raw.githubusercontent.com/Fir3Fly1995/CowBOYs-SC/main/Mini-bot/Bot/"
+MESSAGE_URL = BASE_URL + "message.txt"
+ROLES_URL = BASE_URL + "roles.txt"
+
+def fetch_file(url, local_path):
+    r = requests.get(url)
+    r.raise_for_status()
+    with open(local_path, "w", encoding="utf-8") as f:
+        f.write(r.text)
+
+# Download the latest message.txt and roles.txt at startup
+fetch_file(MESSAGE_URL, "message.txt")
+fetch_file(ROLES_URL, "roles.txt")
 
 # We need to enable specific intents for reactions and members
 # This tells Discord that your bot needs to listen for these events.
