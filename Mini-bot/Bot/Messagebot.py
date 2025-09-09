@@ -11,7 +11,10 @@ import base64
 import json
 
 
-# --- GitHub Integration: Fetch token from env and URL definitions ---
+# --- Logging and GitHub Integration ---
+# Set to True for verbose console output, False to disable.
+VERBOSE_LOGGING = True
+
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 BASE_URL = "https://raw.githubusercontent.com/Fir3Fly1995/CowBOYs-SC/main/Mini-bot/Bot/"
@@ -58,7 +61,8 @@ def get_file_sha(filepath):
         return r.json().get("sha")
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
-            print(f"File {filepath} not found on GitHub. Creating a new one.")
+            if VERBOSE_LOGGING:
+                print(f"File {filepath} not found on GitHub. Creating a new one.")
             return None
         print(f"Error getting file SHA from GitHub: {e}")
         return None
@@ -77,9 +81,8 @@ def update_github_file(filepath, commit_message):
 
     sha = get_file_sha(filepath)
     if sha is None:
-        # If the file doesn't exist, we can't update it, so we'll just log and exit.
-        # It's assumed the file will be created by a manual process.
-        print("Could not get file SHA. Skipping file update.")
+        if VERBOSE_LOGGING:
+            print("Could not get file SHA. Skipping file update.")
         return
 
     with open(filepath, "r", encoding="utf-8") as f:
@@ -106,7 +109,8 @@ def update_github_file(filepath, commit_message):
         print(f"Successfully updated {filepath} on GitHub.")
     except requests.exceptions.RequestException as e:
         print(f"Error updating file on GitHub: {e}")
-        print(f"Response content: {e.response.text}")
+        if VERBOSE_LOGGING:
+            print(f"Response content: {e.response.text}")
 
 
 # We need to enable specific intents for reactions and members
@@ -288,7 +292,8 @@ class RulesBot(commands.Bot):
         match = block_pattern.search(content)
 
         if not match:
-            print(f"Block for channel {channel_id} not found in roles.txt. Cannot mark as skipped.")
+            if VERBOSE_LOGGING:
+                print(f"Block for channel {channel_id} not found in roles.txt. Cannot mark as skipped.")
             return
 
         full_block = match.group(0)
@@ -376,7 +381,7 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
     Core logic for creating/updating roles messages.
     """
     # Ensure the data directory exists
-    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(DATA_ok=True)
     # Fetch the latest roles.txt from GitHub before processing it
     file_path = os.path.join(DATA_DIR, "roles.txt")
     fetch_file(ROLES_URL, file_path)
@@ -389,7 +394,8 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
     for channel_id, config in parsed_data.items():
         channel = bot.get_channel(channel_id)
         if not channel:
-            print(f"Channel with ID {channel_id} not found.")
+            if VERBOSE_LOGGING:
+                print(f"Channel with ID {channel_id} not found.")
             continue
         
         message_to_edit = None
@@ -400,7 +406,8 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
                 message_to_edit = await channel.fetch_message(config["message_id"])
             except discord.NotFound:
                 # This is the key fix. If the message is not found, we should treat it as a new message.
-                print(f"Message with ID {config['message_id']} not found. Will create a new one.")
+                if VERBOSE_LOGGING:
+                    print(f"Message with ID {config['message_id']} not found. Will create a new one.")
                 config["message_id"] = None
                 
             except Exception as e:
@@ -437,7 +444,8 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
                 # Now we need to update the REACTION_ROLES and button_roles dictionaries with the new message ID
                 bot.reaction_roles[str(reaction_message.id)] = config['emotes']
                 bot.button_roles[str(reaction_message.id)] = config['buttons']
-                print(f"New message created with ID: {reaction_message.id}")
+                if VERBOSE_LOGGING:
+                    print(f"New message created with ID: {reaction_message.id}")
             
         else: # Add view to existing message
             if config["buttons"]:
@@ -538,6 +546,7 @@ async def message(interaction: discord.Interaction):
 
 
 @bot.tree.command(name="msgsilent", description="Posts a pre-defined message silently.")
+@app_commands.default_permissions(manage_roles=True)
 async def msgsilent(interaction: discord.Interaction):
     await interaction.response.send_message("Posting message silently...", ephemeral=True)
     # Ensure the data directory exists
@@ -582,10 +591,14 @@ async def refreshrole(interaction: discord.Interaction):
     await interaction.response.send_message("Starting refresh process...", ephemeral=True)
     
     try:
+        deleted_count = 0
+        created_count = 0
+
         # Step 1: Fetch roles.txt file from GitHub.
         roles_file_path = os.path.join(DATA_DIR, "roles.txt")
         fetch_file(ROLES_URL, roles_file_path)
-        print("Step 1 complete: roles.txt fetched from GitHub.")
+        if VERBOSE_LOGGING:
+            print("Step 1 complete: roles.txt fetched from GitHub.")
         await asyncio.sleep(1)
         
         # Step 2: Delete old messages based on IDs from the fetched file.
@@ -597,32 +610,54 @@ async def refreshrole(interaction: discord.Interaction):
                     try:
                         message = await channel.fetch_message(config["message_id"])
                         await message.delete()
-                        print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
+                        deleted_count += 1
+                        if VERBOSE_LOGGING:
+                            print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
                     except discord.NotFound:
-                        print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
+                        if VERBOSE_LOGGING:
+                            print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
                     except Exception as e:
                         print(f"Error deleting message: {e}")
-        print("Step 2 complete: Old messages deleted.")
+        if VERBOSE_LOGGING:
+            print(f"Step 2 complete: {deleted_count} old messages deleted.")
         await asyncio.sleep(1)
         
         # Step 3: Clean up the local roles.txt file.
         bot._unmark_all_blocks()
-        print("Step 3 complete: Local roles.txt cleaned.")
+        if VERBOSE_LOGGING:
+            print("Step 3 complete: Local roles.txt cleaned.")
         await asyncio.sleep(1)
         
         # Step 4: Run the rolesilent command logic to create new messages.
         await _process_roles_messages(interaction, True)
-        print("Step 4 complete: New messages created.")
+        
+        # Count messages created by _process_roles_messages
+        new_parsed_data = _get_parsed_data(roles_file_path)
+        for config in new_parsed_data.values():
+            if config["message_id"]:
+                created_count += 1
+        
+        if VERBOSE_LOGGING:
+            print(f"Step 4 complete: {created_count} new messages created.")
         
         # Step 5: The _process_roles_messages function handles the final push to GitHub.
-        print("Step 5 is part of the previous step. Process complete.")
+        if VERBOSE_LOGGING:
+            print("Step 5 is part of the previous step. Process complete.")
         
+        await interaction.followup.send(
+            f"Role messages have been refreshed successfully.\n"
+            f"**{deleted_count}** old messages deleted.\n"
+            f"**{created_count}** new messages created.",
+            ephemeral=True
+        )
+
     except Exception as e:
         await interaction.followup.send(f"An error occurred during the refresh process: {e}", ephemeral=True)
         print(f"An error occurred during the refresh process: {e}")
 
 
 @bot.tree.command(name="assistme", description="This will silently give you guidance on how to write the roles.txt file.")
+@app_commands.default_permissions(manage_roles=True)
 async def assistme(interaction: discord.Interaction):
     await interaction.response.send_message("Fetching instructions...", ephemeral=True)
     # Ensure the data directory exists
@@ -653,7 +688,8 @@ async def on_raw_reaction_add(payload):
         try:
             member = await guild.fetch_member(payload.user_id)
         except discord.NotFound:
-            print(f"Member with ID {payload.user_id} not found.")
+            if VERBOSE_LOGGING:
+                print(f"Member with ID {payload.user_id} not found.")
             return
 
         if member.bot:
@@ -672,15 +708,18 @@ async def on_raw_reaction_add(payload):
                     if role in member.roles:
                         # User has the role, so remove it
                         await member.remove_roles(role)
-                        print(f"Toggled off role {role.name} for {member.display_name}")
+                        if VERBOSE_LOGGING:
+                            print(f"Toggled off role {role.name} for {member.display_name}")
                     else:
                         # User does not have the role, so add it
                         await member.add_roles(role)
-                        print(f"Toggled on role {role.name} for {member.display_name}")
+                        if VERBOSE_LOGGING:
+                            print(f"Toggled on role {role.name} for {member.display_name}")
                 else:
                     # Normal reaction role, add the role
                     await member.add_roles(role)
-                    print(f"Adding role {role.name} to {member.display_name}")
+                    if VERBOSE_LOGGING:
+                        print(f"Adding role {role.name} to {member.display_name}")
                     
 
 @bot.listen()
@@ -698,7 +737,8 @@ async def on_raw_reaction_remove(payload):
         try:
             member = await guild.fetch_member(payload.user_id)
         except discord.NotFound:
-            print(f"Member with ID {payload.user_id} not found.")
+            if VERBOSE_LOGGING:
+                print(f"Member with ID {payload.user_id} not found.")
             return
 
         if member.bot:
@@ -714,7 +754,8 @@ async def on_raw_reaction_remove(payload):
                 role = discord.utils.get(guild.roles, name=role_name)
                 
                 if role is not None:
-                    print(f"Removing role {role.name} from {member.display_name}")
+                    if VERBOSE_LOGGING:
+                        print(f"Removing role {role.name} from {member.display_name}")
                     await member.remove_roles(role)
 
 
