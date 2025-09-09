@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   bot:
     # Use the Dockerfile in the current directory to build the image
