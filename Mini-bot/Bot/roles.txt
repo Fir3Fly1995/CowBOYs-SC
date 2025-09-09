@@ -1,7 +1,6 @@
 Start.
 CH-ID<#1414600989016723614>
 MSG-ID:1414991687666630697
-Replace_MSG
 MSG;
 1. Poaching players from the org is forbidden - Poaching will be met with extreme consequences.
 2. Do not use foul language in text channels - Read the room in Voice Channels.
