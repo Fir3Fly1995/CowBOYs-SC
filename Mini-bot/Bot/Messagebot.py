@@ -184,86 +184,71 @@ class RulesBot(commands.Bot):
         for match in block_matches:
             block_type = match.group(1).strip().lower()
             block = match.group(2).strip()
-            if block_type == 'skip.':
-                continue
-
-            lines = block.split('\n')
-
-            # Parse channel ID and name
+            
+            # Use a more robust regex to find all the different parts of the block.
+            # This is the crucial fix for the "could not parse" error.
             channel_id_match = re.search(r'CH-ID<#(\d+)>', block)
-            if not channel_id_match:
-                continue
-            channel_id = int(channel_id_match.group(1))
-
             message_id_match = re.search(r'MSG-ID:(\d+)', block)
-            message_id = int(message_id_match.group(1)) if message_id_match else None
-
             replace_msg = "Replace_MSG" in block
 
             message_text = None
-            if "MSG;" in block:
-                msg_start = block.find("MSG;") + 4
-                msg_end_emote = block.find("EMOTE_1;", msg_start)
-                msg_end_btn = block.find("MK-BTN_1;", msg_start)
-
-                if msg_end_emote != -1 and (msg_end_btn == -1 or msg_end_emote < msg_end_btn):
-                    message_text = block[msg_start:msg_end_emote].strip()
-                elif msg_end_btn != -1:
-                    message_text = block[msg_start:msg_end_btn].strip()
-                else:
-                    message_text = block[msg_start:].strip()
+            message_text_match = re.search(r'MSG;(.*?)(?:EMOTE_1|MK-BTN_1|$)', block, flags=re.DOTALL | re.IGNORECASE)
+            if message_text_match:
+                message_text = message_text_match.group(1).strip()
 
             emotes = {}
+            emote_matches = re.finditer(r'EMOTE_(\d+);\s*(<.+?|.+?)\s*\"(.+?)\"', block, flags=re.IGNORECASE)
+            for emote_match in emote_matches:
+                emote = emote_match.group(2).strip()
+                label = emote_match.group(3).strip()
+                emote_number = emote_match.group(1)
+
+                is_toggle = False
+                toggle_role_match = re.search(f'Toggle-Role', block, flags=re.IGNORECASE)
+                if toggle_role_match:
+                    is_toggle = True
+
+                give_role_match = re.search(f'Give_Role_{emote_number};\s*\"(.+?)\"', block, flags=re.IGNORECASE)
+                if give_role_match:
+                    role_name = give_role_match.group(1).strip()
+                    emotes[emote] = {"label": label, "role_name": role_name, "is_toggle": is_toggle}
+
             buttons = {}
+            button_matches = re.finditer(r'MK-BTN_(\d+);\s*Colour=(\S+);\s*Emoji=(\S+);\s*Text=\"(.+?)\"', block, flags=re.IGNORECASE)
+            for button_match in button_matches:
+                button_number = button_match.group(1)
+                color = button_match.group(2)
+                emoji = button_match.group(3)
+                text = button_match.group(4)
+                
+                is_toggle = False
+                toggle_role_match = re.search(f'Toggle-Role', block, flags=re.IGNORECASE)
+                if toggle_role_match:
+                    is_toggle = True
 
-            # Parse emotes and role names
-            for i, line in enumerate(lines):
-                emote_match = re.search(r'EMOTE_(\d+);\s*(<.+?|.+?)\s*\"(.+?)\"', line)
-                if emote_match:
-                    emote = emote_match.group(2).strip()
-                    label = emote_match.group(3).strip()
-                    emote_number = emote_match.group(1)
+                give_role_matches = re.findall(f'Give_Role_{button_number};\s*\"(.+?)\"', block, flags=re.IGNORECASE)
+                if give_role_matches:
+                    role_names = [r.strip() for r in give_role_matches]
+                    buttons[button_number] = {
+                        "color": color.upper(),
+                        "emoji": emoji,
+                        "text": text,
+                        "role_names": role_names,
+                        "is_toggle": is_toggle
+                    }
 
-                    is_toggle = False
-                    if i + 1 < len(lines) and lines[i+1].strip().lower() == "toggle-role":
-                        is_toggle = True
 
-                    give_role_match = re.search(f'Give_Role_{emote_number};\s*\"(.+?)\"', block)
-                    if give_role_match:
-                        role_name = give_role_match.group(1).strip()
-                        emotes[emote] = {"label": label, "role_name": role_name, "is_toggle": is_toggle}
-
-            # Parse buttons and role names
-            for i, line in enumerate(lines):
-                button_match = re.search(r'MK-BTN_(\d+);\s*Colour=(\S+);\s*Emoji=(\S+);\s*Text=\"(.+?)\"', line)
-                if button_match:
-                    button_number = button_match.group(1)
-                    color = button_match.group(2)
-                    emoji = button_match.group(3)
-                    text = button_match.group(4)
-
-                    is_toggle = False
-                    if i + 1 < len(lines) and lines[i+1].strip().lower() == "toggle-role":
-                        is_toggle = True
-
-                    give_role_matches = re.findall(f'Give_Role_{button_number};\s*\"(.+?)\"', block)
-                    if give_role_matches:
-                        role_names = [r.strip() for r in give_role_matches]
-                        buttons[button_number] = {
-                            "color": color.upper(),
-                            "emoji": emoji,
-                            "text": text,
-                            "role_names": role_names,
-                            "is_toggle": is_toggle
-                        }
-
-            parsed_data[channel_id] = {
-                "message_id": message_id,
-                "replace_msg": replace_msg,
-                "message_text": message_text,
-                "emotes": emotes,
-                "buttons": buttons
-            }
+            if channel_id_match:
+                channel_id = int(channel_id_match.group(1))
+                message_id = int(message_id_match.group(1)) if message_id_match else None
+                
+                parsed_data[channel_id] = {
+                    "message_id": message_id,
+                    "replace_msg": replace_msg,
+                    "message_text": message_text,
+                    "emotes": emotes,
+                    "buttons": buttons
+                }
 
         # Populate the bot's reaction_roles dictionary with the new structure
         self.reaction_roles = {}
