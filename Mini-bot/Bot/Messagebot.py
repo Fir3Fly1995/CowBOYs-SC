@@ -278,7 +278,7 @@ class RulesBot(commands.Bot):
     def _mark_block_as_skipped(self, channel_id, message_id):
         """
         Rewrites the roles.txt file, replacing 'Start.' with 'Skip.'
-        and adding the message ID below the channel ID.
+        and adding the message ID and Replace-Message flag.
         """
         if not os.path.exists(self.roles_file_path):
             return
@@ -300,15 +300,15 @@ class RulesBot(commands.Bot):
         # 1. Replace 'Start.' or 'Skip.' with 'Skip.'
         new_block = re.sub(r'^(Start|Skip)\.', 'Skip.', full_block, flags=re.IGNORECASE | re.MULTILINE)
         
-        # 2. Add the MSG-ID right after the CH-ID line.
-        # First, remove any existing MSG-ID to prevent duplicates.
+        # 2. Remove any existing MSG-ID and Replace_MSG to prevent duplicates.
         new_block = re.sub(r'MSG-ID:\d+\s*\n', '', new_block, flags=re.IGNORECASE)
+        new_block = re.sub(r'Replace_MSG\s*\n', '', new_block, flags=re.IGNORECASE)
         
         ch_id_line = f"CH-ID<#{channel_id}>"
-        # Now, insert the new MSG-ID line right after the CH-ID line.
+        # Now, insert the new MSG-ID line and Replace_MSG flag right after the CH-ID line.
         new_block = re.sub(
             f'({re.escape(ch_id_line)})',
-            f'\\1\nMSG-ID:{message_id}',
+            f'\\1\nMSG-ID:{message_id}\nReplace_MSG',
             new_block,
             1,
             flags=re.IGNORECASE
@@ -732,16 +732,14 @@ async def _send_startup_message(bot_instance):
     Sends a direct message to a target user on bot startup.
     """
     try:
-        target_channel = bot_instance.get_channel(BOT_OUTPUT_CHANNEL_ID)
-        if target_channel:
-            # We can use a special format to ping a user.
-            user_mention = f"<@{TARGET_USER_ID}>"
+        target_user = await bot_instance.fetch_user(TARGET_USER_ID)
+        if target_user:
             message = (
-                f"Hey {user_mention}, I had to reboot. Or I just came back online after a reboot. I am ready!"
+                f"Hey, I had to reboot. Or I just came back online after a reboot. I am ready!"
             )
-            await target_channel.send(message)
+            await target_user.send(message)
             if VERBOSE_LOGGING:
-                print(f"Sent startup message to {target_channel.name}")
+                print(f"Sent startup message to {target_user.name}")
     except Exception as e:
         print(f"Error sending startup message: {e}")
 
