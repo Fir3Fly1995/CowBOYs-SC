@@ -149,23 +149,13 @@ class RulesBot(commands.Bot):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
 
-        # Send "I am alive" message to specified channels and then run refresh
+        # Run the automated refresh task on startup
         try:
             # Ensure the data directory exists
             os.makedirs(DATA_DIR, exist_ok=True)
-            fetch_file(CHANNELS_URL, self.channels_file_path)
-            with open(self.channels_file_path, "r", encoding="utf-8") as f:
-                channel_ids = [line.strip() for line in f if line.strip().isdigit()]
-            
-            for channel_id_str in channel_ids:
-                channel_id = int(channel_id_str)
-                channel = self.get_channel(channel_id)
-                if channel:
-                    await channel.send("Hello! I am alive, starting role message refresh process...")
-            await asyncio.sleep(1)
             await _perform_refresh_task(self)
         except Exception as e:
-            print(f"Error sending 'I am alive' messages or starting refresh: {e}")
+            print(f"Error running automated refresh: {e}")
 
     def load_reaction_roles(self):
         """
@@ -468,7 +458,7 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
                     print("This is likely due to an invalid emoji format in your roles.txt file.")
                     print("Please ensure you are using a raw unicode emoji or the full custom emoji format (<:name:id>).")
                     
-        # Mark the block as skipped so it doesn't run again on the next /setuproles
+        # Mark the block as skipped so it's not handled again
         bot._mark_block_as_skipped(channel_id, config["message_id"])
 
     # This is the crucial fix!
@@ -540,24 +530,40 @@ async def _perform_refresh_task(bot_instance: commands.Bot, interaction: discord
     
     # Send a summary message based on the context (ephemeral for slash command)
     if interaction:
-        is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
-        await interaction.followup.send(
-            f"Role messages have been refreshed successfully.\n"
-            f"**{deleted_count}** old messages deleted.\n"
-            f"**{created_count}** new messages created.",
-            ephemeral=is_ephemeral
-        )
+        await _send_refresh_summary(interaction, deleted_count, created_count, ephemeral=True)
     else:
-        try:
-            admin_channel = bot_instance.get_channel(ADMIN_CHANNEL_ID)
+        await _send_refresh_summary(bot_instance, deleted_count, created_count)
+
+
+async def _send_refresh_summary(target, deleted_count, created_count, ephemeral=False):
+    """
+    Sends a summary message and purges temporary bot output.
+    `target` can be an `interaction` or a `bot_instance`.
+    """
+    try:
+        if isinstance(target, discord.Interaction):
+            # Send an ephemeral summary message for slash commands
+            await target.followup.send(
+                f"Role messages have been refreshed successfully.\n"
+                f"**{deleted_count}** old messages deleted.\n"
+                f"**{created_count}** new messages created.",
+                ephemeral=ephemeral
+            )
+        elif isinstance(target, commands.Bot):
+            # Purge all bot messages in the admin channel before sending the final summary
+            admin_channel = target.get_channel(ADMIN_CHANNEL_ID)
             if admin_channel:
+                await admin_channel.purge(check=lambda m: m.author == target.user)
+
                 await admin_channel.send(
                     f"Role messages have been refreshed successfully.\n"
                     f"**{deleted_count}** old messages deleted.\n"
                     f"**{created_count}** new messages created."
                 )
-        except Exception as e:
-            print(f"Error sending refresh summary to admin channel: {e}")
+    except Exception as e:
+        if VERBOSE_LOGGING:
+            print(f"Error sending refresh summary: {e}")
+
 
 async def _log_command_usage(interaction: discord.Interaction):
     """
@@ -666,7 +672,6 @@ async def message(interaction: discord.Interaction):
 @app_commands.default_permissions(manage_roles=True)
 async def msgsilent(interaction: discord.Interaction):
     await _log_command_usage(interaction)
-    # This command is always ephemeral, so the check is not needed.
     await interaction.response.send_message("Posting message silently...", ephemeral=True)
     # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -700,7 +705,6 @@ async def rolesilent(interaction: discord.Interaction):
     Parses roles.txt and performs the configured actions silently.
     """
     await _log_command_usage(interaction)
-    # This command is always ephemeral, so the check is not needed.
     await interaction.response.send_message("Fetching latest roles file from GitHub and processing silently...", ephemeral=True)
     await _process_roles_messages(interaction, True)
 
@@ -720,7 +724,6 @@ async def refreshrole(interaction: discord.Interaction):
 @app_commands.default_permissions(manage_roles=True)
 async def assistme(interaction: discord.Interaction):
     await _log_command_usage(interaction)
-    # This command is always ephemeral, so the check is not needed.
     await interaction.response.send_message("Fetching instructions...", ephemeral=True)
     # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -860,86 +863,6 @@ async def on_raw_reaction_remove(payload):
                         print(f"Removing role {role.name} from {member.display_name}")
                     await member.remove_roles(role)
 
-
-async def _perform_refresh_task(bot_instance: commands.Bot, interaction: discord.Interaction = None):
-    """
-    Performs the full refresh process. Can be called from on_ready or a slash command.
-    """
-    if VERBOSE_LOGGING:
-        print("Starting automated refresh process.")
-    
-    deleted_count = 0
-    created_count = 0
-
-    # Step 1: Fetch roles.txt file from GitHub.
-    roles_file_path = os.path.join(DATA_DIR, "roles.txt")
-    fetch_file(ROLES_URL, roles_file_path)
-    if VERBOSE_LOGGING:
-        print("Step 1 complete: roles.txt fetched from GitHub.")
-    await asyncio.sleep(1)
-
-    # Step 2: Delete old messages based on IDs from the fetched file.
-    parsed_data = _get_parsed_data(roles_file_path)
-    for channel_id, config in parsed_data.items():
-        if config["message_id"]:
-            channel = bot_instance.get_channel(channel_id)
-            if channel:
-                try:
-                    message = await channel.fetch_message(config["message_id"])
-                    await message.delete()
-                    deleted_count += 1
-                    if VERBOSE_LOGGING:
-                        print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
-                except discord.NotFound:
-                    if VERBOSE_LOGGING:
-                        print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
-                except Exception as e:
-                    print(f"Error deleting message: {e}")
-    if VERBOSE_LOGGING:
-        print(f"Step 2 complete: {deleted_count} old messages deleted.")
-    await asyncio.sleep(1)
-
-    # Step 3: Clean up the local roles.txt file.
-    bot_instance._unmark_all_blocks()
-    if VERBOSE_LOGGING:
-        print("Step 3 complete: Local roles.txt cleaned.")
-    await asyncio.sleep(1)
-
-    # Step 4: Run the rolesilent command logic to create new messages.
-    # We pass None for the interaction and True for is_ephemeral, but it will be ignored.
-    await _process_roles_messages(interaction, True)
-
-    # Count messages created by _process_roles_messages
-    new_parsed_data = _get_parsed_data(roles_file_path)
-    for config in new_parsed_data.values():
-        if config["message_id"]:
-            created_count += 1
-    if VERBOSE_LOGGING:
-        print(f"Step 4 complete: {created_count} new messages created.")
-
-    # Step 5: The _process_roles_messages function handles the final push to GitHub.
-    if VERBOSE_LOGGING:
-        print("Step 5 is part of the previous step. Process complete.")
-    
-    # Send a summary message based on the context (ephemeral for slash command)
-    if interaction:
-        await interaction.followup.send(
-            f"Role messages have been refreshed successfully.\n"
-            f"**{deleted_count}** old messages deleted.\n"
-            f"**{created_count}** new messages created.",
-            ephemeral=True
-        )
-    else:
-        try:
-            admin_channel = bot_instance.get_channel(ADMIN_CHANNEL_ID)
-            if admin_channel:
-                await admin_channel.send(
-                    f"Role messages have been refreshed successfully.\n"
-                    f"**{deleted_count}** old messages deleted.\n"
-                    f"**{created_count}** new messages created."
-                )
-        except Exception as e:
-            print(f"Error sending refresh summary to admin channel: {e}")
 
 if __name__ == "__main__":
     bot.run(TOKEN)
