@@ -1,27 +1,70 @@
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 import os
 import re
 import requests
+import subprocess
+import asyncio
 
 
-# --- GitHub Integration: Fetch token from env and download files from GitHub ---
+# --- GitHub Integration: Fetch token from env and URL definitions ---
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 BASE_URL = "https://raw.githubusercontent.com/Fir3Fly1995/CowBOYs-SC/main/Mini-bot/Bot/"
+REPO_URL = f"https://oauth2:{GITHUB_TOKEN}@github.com/Fir3Fly1995/CowBOYs-SC.git"
 MESSAGE_URL = BASE_URL + "message.txt"
 ROLES_URL = BASE_URL + "roles.txt"
+INSTRUCTIONS_URL = BASE_URL + "instructions.txt"
+CHANNELS_URL = BASE_URL + "channels.txt"
+DATA_DIR = "/app/data" # Directory inside the container to store files
+
 
 def fetch_file(url, local_path):
-    r = requests.get(url)
-    r.raise_for_status()
-    with open(local_path, "w", encoding="utf-8") as f:
-        f.write(r.text)
+    """
+    Downloads a file from a given URL and saves it to a local path.
+    """
+    try:
+        r = requests.get(url)
+        r.raise_for_status()
+        with open(local_path, "w", encoding="utf-8") as f:
+            f.write(r.text)
+        print(f"Successfully fetched and updated {local_path} from GitHub.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching file from {url}: {e}")
+    except IOError as e:
+        print(f"Error saving file to {local_path}: {e}")
 
-# Download the latest message.txt and roles.txt at startup
-fetch_file(MESSAGE_URL, "message.txt")
-fetch_file(ROLES_URL, "roles.txt")
+
+def push_to_github():
+    """
+    Commits and pushes the updated roles.txt file to the GitHub repository.
+    """
+    if not GITHUB_TOKEN:
+        print("GitHub token not found. Skipping push to GitHub.")
+        return
+
+    try:
+        # Use subprocess to execute git commands
+        # Configure Git with user details for the commit
+        subprocess.run(['git', 'config', '--global', 'user.email', 'bot@example.com'], check=True)
+        subprocess.run(['git', 'config', '--global', 'user.name', 'CowboysBot'], check=True)
+
+        # Add the roles.txt file
+        subprocess.run(['git', 'add', os.path.join(DATA_DIR, 'roles.txt')], check=True)
+
+        # Commit the changes
+        subprocess.run(['git', 'commit', '-m', 'Bot updated roles.txt with message ID'], check=True)
+
+        # Push the changes to the repository using the provided token for authentication
+        subprocess.run(['git', 'push', REPO_URL, 'main'], check=True)
+
+        print("Successfully pushed changes to GitHub.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error pushing to GitHub: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred during Git push: {e}")
+
 
 # We need to enable specific intents for reactions and members
 # This tells Discord that your bot needs to listen for these events.
@@ -36,15 +79,41 @@ class RulesBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
         self.reaction_roles = {}
         self.button_roles = {}
-        self.roles_file_path = r"D:\GitHub\CowBOYs-SC\Mini-bot\Bot\roles.txt"
+        self.roles_file_path = os.path.join(DATA_DIR, "roles.txt")
+        self.instructions_file_path = os.path.join(DATA_DIR, "instructions.txt")
+        self.channels_file_path = os.path.join(DATA_DIR, "channels.txt")
+        self.message_file_path = os.path.join(DATA_DIR, "message.txt")
 
     async def setup_hook(self):
         # Sync slash commands on startup
         await self.tree.sync()
         print(f'{self.user} has connected to Discord!')
-        # Load the reaction role data from the file on startup
-        self.load_reaction_roles()
+        # Note: We no longer load reaction roles at startup,
+        # but rather when the /setuproles command is called.
 
+
+    async def on_ready(self):
+        """
+        Runs when the bot has successfully connected to Discord.
+        """
+        print(f'Logged in as {self.user} (ID: {self.user.id})')
+        print('------')
+
+        # Send "I am alive" message to specified channels
+        try:
+            # Ensure the data directory exists
+            os.makedirs(DATA_DIR, exist_ok=True)
+            fetch_file(CHANNELS_URL, self.channels_file_path)
+            with open(self.channels_file_path, "r", encoding="utf-8") as f:
+                channel_ids = [line.strip() for line in f if line.strip().isdigit()]
+            
+            for channel_id_str in channel_ids:
+                channel_id = int(channel_id_str)
+                channel = self.get_channel(channel_id)
+                if channel:
+                    await channel.send("Hello! I am alive, please run the `/refreshrole` command to update all message IDs.")
+        except Exception as e:
+            print(f"Error sending 'I am alive' messages: {e}")
 
     def load_reaction_roles(self):
         """
@@ -53,7 +122,7 @@ class RulesBot(commands.Bot):
         """
         if not os.path.exists(self.roles_file_path):
             print(f"Roles file not found at: {self.roles_file_path}")
-            return
+            return {}
             
         with open(self.roles_file_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -202,88 +271,76 @@ class RulesBot(commands.Bot):
 
         with open(self.roles_file_path, "w", encoding="utf-8") as f:
             f.write(final_content)
+            
+        push_to_github()
 
 
-bot = RulesBot()
-
-class RoleButton(discord.ui.Button):
-    COLOR_MAP = {
-        "green": discord.ButtonStyle.success,
-        "red": discord.ButtonStyle.danger,
-        "blue": discord.ButtonStyle.primary,
-        "blurple": discord.ButtonStyle.primary,
-        "grey": discord.ButtonStyle.secondary,
-        "gray": discord.ButtonStyle.secondary,
-    }
-
-    def __init__(self, color, emoji, text, role_names, is_toggle, bot):
-        style = self.COLOR_MAP.get(color.lower(), discord.ButtonStyle.secondary)
-        super().__init__(style=style, emoji=emoji, label=text)
-        self.role_names = role_names
-        self.is_toggle = is_toggle
-        self.bot = bot
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        guild = interaction.guild
-        member = interaction.user
-
-        roles = [discord.utils.get(guild.roles, name=role_name) for role_name in self.role_names]
-        roles = [role for role in roles if role is not None]
-
-        if not roles:
-            await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
+    def _unmark_all_blocks(self):
+        """
+        Rewrites the roles.txt file, replacing 'Skip.' with 'Start.'
+        and removing all message IDs.
+        """
+        if not os.path.exists(self.roles_file_path):
+            print("roles.txt not found. Cannot unmark blocks.")
             return
 
-        if self.is_toggle:
-            # Toggle all roles
-            for role in roles:
-                if role in member.roles:
-                    await member.remove_roles(role)
-                else:
-                    await member.add_roles(role)
-            await interaction.followup.send(
-                f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
-            )
-        else:
-            # Add all roles if not already present
-            added = []
-            for role in roles:
-                if role not in member.roles:
-                    await member.add_roles(role)
-                    added.append(role.name)
-            if added:
-                await interaction.followup.send(
-                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
-                )
-            else:
-                await interaction.followup.send(
-                    "You already have all the roles.", ephemeral=True
-                )
+        with open(self.roles_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Replace all 'Skip.' with 'Start.'
+        content = re.sub(r'Skip\.', 'Start.', content, flags=re.IGNORECASE)
+
+        # Remove all MSG-ID lines
+        content = re.sub(r'MSG-ID:\d+\s*\n', '', content, flags=re.IGNORECASE)
+
+        with open(self.roles_file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        
+        # We don't push to GitHub here, as the final push happens after roles are processed.
 
 
-@bot.tree.command(name="message", description="Post contents of Message.txt from absolute path.")
-async def message(interaction: discord.Interaction):
-    await interaction.response.send_message("Reading message from file...", ephemeral=True)
-    file_path = r"D:\GitHub\CowBOYs-SC\Mini-bot\Bot\Message.txt"
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            await interaction.channel.send(f.read())
-    except Exception as e:
-        await interaction.followup.send(f"Error: {e}", ephemeral=True)
-
-
-@bot.tree.command(name="setuproles", description="Sends or updates reaction roles message based on roles.txt.")
-@app_commands.default_permissions(manage_roles=True)
-async def setuproles(interaction: discord.Interaction):
+def _get_parsed_data(roles_file_path):
     """
-    Parses roles.txt and performs the configured actions.
+    Parses the roles.txt file and returns the parsed data.
     """
-    await interaction.response.send_message("Processing roles.txt...", ephemeral=True)
+    parsed_data = {}
+    if not os.path.exists(roles_file_path):
+        return parsed_data
+    
+    with open(roles_file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    blocks = re.split(r'Start\.|Skip\.', content, flags=re.IGNORECASE)[1:]
+    
+    for block in blocks:
+        lines = block.strip().split('\n')
+        
+        channel_id_match = re.search(r'CH-ID<#(\d+)>', block)
+        if not channel_id_match:
+            continue
+        channel_id = int(channel_id_match.group(1))
 
+        message_id_match = re.search(r'MSG-ID:(\d+)', block)
+        message_id = int(message_id_match.group(1)) if message_id_match else None
+        
+        parsed_data[channel_id] = {"message_id": message_id}
+        
+    return parsed_data
+
+
+async def _process_roles_messages(interaction: discord.Interaction, is_silent: bool):
+    """
+    Core logic for creating/updating roles messages.
+    """
+    # Ensure the data directory exists
+    os.makedirs(DATA_DIR, exist_ok=True)
+    # Fetch the latest roles.txt from GitHub before processing it
+    file_path = os.path.join(DATA_DIR, "roles.txt")
+    fetch_file(ROLES_URL, file_path)
+    
     parsed_data = bot.load_reaction_roles()
     if not parsed_data:
-        await interaction.followup.send("Could not parse roles.txt or file is empty.", ephemeral=True)
+        await interaction.followup.send("Could not parse roles.txt or file is empty.", ephemeral=is_silent)
         return
 
     for channel_id, config in parsed_data.items():
@@ -352,8 +409,176 @@ async def setuproles(interaction: discord.Interaction):
         # Mark the block as skipped so it doesn't run again on the next /setuproles
         bot._mark_block_as_skipped(channel_id, config["message_id"])
 
-    await interaction.followup.send("Roles messages have been processed.", ephemeral=True)
+    await interaction.followup.send("Roles messages have been processed.", ephemeral=is_silent)
+
+
+bot = RulesBot()
+
+class RoleButton(discord.ui.Button):
+    COLOR_MAP = {
+        "green": discord.ButtonStyle.success,
+        "red": discord.ButtonStyle.danger,
+        "blue": discord.ButtonStyle.primary,
+        "blurple": discord.ButtonStyle.primary,
+        "grey": discord.ButtonStyle.secondary,
+        "gray": discord.ButtonStyle.secondary,
+    }
+
+    def __init__(self, color, emoji, text, role_names, is_toggle, bot):
+        style = self.COLOR_MAP.get(color.lower(), discord.ButtonStyle.secondary)
+        super().__init__(style=style, emoji=emoji, label=text)
+        self.role_names = role_names
+        self.is_toggle = is_toggle
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        member = interaction.user
+
+        roles = [discord.utils.get(guild.roles, name=role_name) for role_name in self.role_names]
+        roles = [role for role in roles if role is not None]
+
+        if not roles:
+            await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
+            return
+
+        if self.is_toggle:
+            # Toggle all roles
+            for role in roles:
+                if role in member.roles:
+                    await member.remove_roles(role)
+                else:
+                    await member.add_roles(role)
+            await interaction.followup.send(
+                f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
+            )
+        else:
+            # Add all roles if not already present
+            added = []
+            for role in roles:
+                if role not in member.roles:
+                    await member.add_roles(role)
+                    added.append(role.name)
+            if added:
+                await interaction.followup.send(
+                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    "You already have all the roles.", ephemeral=True
+                )
+
+
+@bot.tree.command(name="message", description="This will post a pre-defined message")
+async def message(interaction: discord.Interaction):
+    await interaction.response.send_message("Fetching latest message from GitHub...", ephemeral=False)
+    # Ensure the data directory exists
+    os.makedirs(DATA_DIR, exist_ok=True)
+    # Fetch the latest message.txt from GitHub before reading it
+    file_path = os.path.join(DATA_DIR, "message.txt")
+    fetch_file(MESSAGE_URL, file_path)
     
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            await interaction.channel.send(f.read())
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}", ephemeral=False)
+
+
+@bot.tree.command(name="msgsilent", description="Posts a pre-defined message silently.")
+async def msgsilent(interaction: discord.Interaction):
+    await interaction.response.send_message("Posting message silently...", ephemeral=True)
+    # Ensure the data directory exists
+    os.makedirs(DATA_DIR, exist_ok=True)
+    # Fetch the latest message.txt from GitHub before reading it
+    file_path = os.path.join(DATA_DIR, "message.txt")
+    fetch_file(MESSAGE_URL, file_path)
+    
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            await interaction.channel.send(f.read())
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}", ephemeral=True)
+
+
+@bot.tree.command(name="rolemsg", description="This is to push the stored roles messages to the defined channels.")
+@app_commands.default_permissions(manage_roles=True)
+async def rolemsg(interaction: discord.Interaction):
+    """
+    Parses roles.txt and performs the configured actions.
+    """
+    await interaction.response.send_message("Fetching latest roles file from GitHub...", ephemeral=False)
+    await _process_roles_messages(interaction, False)
+
+
+@bot.tree.command(name="rolesilent", description="This is to push the stored roles messages silently.")
+@app_commands.default_permissions(manage_roles=True)
+async def rolesilent(interaction: discord.Interaction):
+    """
+    Parses roles.txt and performs the configured actions silently.
+    """
+    await interaction.response.send_message("Fetching latest roles file from GitHub and processing silently...", ephemeral=True)
+    await _process_roles_messages(interaction, True)
+
+
+@bot.tree.command(name="refreshrole", description="Refreshes all roles messages in all channels.")
+@app_commands.default_permissions(manage_roles=True)
+async def refreshrole(interaction: discord.Interaction):
+    """
+    Refreshes all roles messages in all channels.
+    """
+    await interaction.response.send_message("Starting refresh process...", ephemeral=True)
+    
+    try:
+        # Step 1: Fetch roles.txt to get the current message IDs
+        roles_file_path = os.path.join(DATA_DIR, "roles.txt")
+        fetch_file(ROLES_URL, roles_file_path)
+        
+        parsed_data = _get_parsed_data(roles_file_path)
+
+        # Step 2: Delete old messages
+        for channel_id, config in parsed_data.items():
+            if config["message_id"]:
+                channel = bot.get_channel(channel_id)
+                if channel:
+                    try:
+                        message = await channel.fetch_message(config["message_id"])
+                        await message.delete()
+                        print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
+                    except discord.NotFound:
+                        print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
+                    except Exception as e:
+                        print(f"Error deleting message: {e}")
+        
+        # Step 3: Reset roles.txt by unmarking all blocks
+        bot._unmark_all_blocks()
+        
+        # Step 4: Repost the roles messages using the core logic
+        await _process_roles_messages(interaction, True)
+        
+        await interaction.followup.send("Role messages have been refreshed successfully.", ephemeral=True)
+
+    except Exception as e:
+        await interaction.followup.send(f"An error occurred during the refresh process: {e}", ephemeral=True)
+        print(f"An error occurred during the refresh process: {e}")
+
+
+@bot.tree.command(name="assistme", description="This will silently give you guidance on how to write the roles.txt file.")
+async def assistme(interaction: discord.Interaction):
+    await interaction.response.send_message("Fetching instructions...", ephemeral=True)
+    # Ensure the data directory exists
+    os.makedirs(DATA_DIR, exist_ok=True)
+    # Fetch the instructions.txt from GitHub before reading it
+    file_path = os.path.join(DATA_DIR, "instructions.txt")
+    fetch_file(INSTRUCTIONS_URL, file_path)
+    
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            await interaction.followup.send(f.read(), ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"Error: {e}", ephemeral=True)
+
 
 @bot.listen()
 async def on_raw_reaction_add(payload):

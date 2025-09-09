@@ -1,0 +1,46 @@
+Functions order. The functions listed below must appear in the exact order and format of how they should apprear int he roles.txt file. 
+
+Skip.
+    (The Bot will replace "Start." with this, place new entries below the Stop. at the end. alternatively, replace Skip. with Start. to include it in the next push!)
+
+Start.
+    (always place at the start of a block)
+
+CH-ID<#xxxxxxxxxxxxxx>CHANNEL_NAME
+    (Tells the bot where to post the message. The CHANNEL_NAME [always caps] is for you to actually be able to read the channel itself.)
+
+MSG-ID:xxxxxxxxxxxx 
+    (Use the message ID if you want to target a specific message put out by the bot. Can also use witht he Replace_MSG command. The Bot will put this in automatically after running.)
+
+Replace_MSG
+    (Used to replace an existing message the bot posted. If you use this, you must use MSG;)
+
+MSG;
+    (This comes next in the flow. Enter your message as if you were typing on discord.)
+
+EMOTE_x; UNICODE_EMOJI "Label" or <:CUSTOM_EMOJI_NAME:EMOJI_ID> "Label"
+    EMOJI_1; <:SCSCULL:1408448147977670798> "Skull" - CUSTOM EMOJI
+    EMOJI_1; 😀 "Happy" - DISCORD_STD_EMOJI
+        (This is a 2 pronged reaction role thing. you call EMOJI and _NUM [ties it to the role later] then semicolon space in Discord, click the emoji icon in the text field, then right click the emoji
+        and click copy. Paste it into the document. Type a label as required.)
+            (Method 2: do EMOJI_NUM; <: go to the emoji selection and right click the custom emoji. Select the emoji you want and note the name of it then copy the Emoji_ID. Type the name exactly how you see it after the : then close with : and
+            paste the Emoji_id then close the >. It should look like tthe above example)
+
+MK-BTN_x; Colour=COLOUR; Emoji=COPY_EMOJI_FROM_DISCORD; Text=button_label 
+    (This makes a button. Defines the colour of the button as either Red, Green, Blue, Grey/Gray or Blurple (a mix of blue/purple), then attaches an emoji and a label. If you don't want an emoji, just leave out the "Emoji=COPY_EMOJI;" part entirely.)
+
+Toggle-Role
+    (this allows a role to be toggled by the user clicking multiple times.)
+        NOTE: THIS IS NOT WORKING YET. I WILL FIX IT SOON.
+
+Static-Role
+    (The user can only interract once to get the associated role, subsequent clicks by the user will be ignored)
+
+Give_Role_x; "Role Name"
+    (The Give_Role_X is tied to the MK-BTN_x; and EMOJI_x; entries. this means that EMOJI_1; and MK-BTN_1 = Give_Role_1; "Put the name of the role here")
+
+End.
+    (This goes last, this tells the bot to move to the next Start. identifier)
+    (you can start fresh with a new Start. line, after a line break)
+
+Contact <@470337413923995675> if you need assistance, or something breaks.

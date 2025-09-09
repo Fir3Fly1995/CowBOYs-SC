@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  bot:
+    # Use the Dockerfile in the current directory to build the image
+    build: .
+    
+    # Assign a custom name to the container for easy identification
+    container_name: cowboys-bot
+
+    # The volumes section creates a bind mount from your local directory to the
+    # container's working directory. This means any changes you make locally
+    # will be reflected inside the container instantly.
+    volumes:
+      - ./CowBOYs-SC/Mini-bot/Bot:/app
+
+    # Automatically restart the container if it crashes or the Docker daemon restarts.
+    restart: unless-stopped
+
+    # Environment variables are passed to the container at runtime.
+    # It's best practice to use an .env file to manage sensitive information like your token.
+    # Create a file named ".env" in the same directory as this docker-compose.yml file
+    # and add the following lines to it:
+    # CRUEL_STARS_TOKEN="YOUR_DISCORD_BOT_TOKEN_HERE"
+    # GITHUB_TOKEN="YOUR_GITHUB_PERSONAL_ACCESS_TOKEN_HERE"
+    env_file:
+      - .env
