@@ -151,7 +151,10 @@ class RulesBot(commands.Bot):
         print('------')
 
         # Send a direct ping to the target user when the bot comes online.
-        await _send_startup_message(self)
+        try:
+            await _send_startup_message(self)
+        except Exception as e:
+            print(f"Error sending startup message: {e}")
 
         # On startup, re-sync messages and views based on the latest roles.txt
         try:
@@ -838,6 +841,7 @@ async def _resync_messages(bot_instance: commands.Bot):
                     print(f"Message with ID {message_id} not found. Skipping resync for this message.")
             except Exception as e:
                 print(f"Error during resync for message {message_id}: {e}")
+                
     except Exception as e:
         print(f"Error during resync process: {e}")
                 
@@ -865,25 +869,6 @@ async def message(interaction: discord.Interaction):
         await interaction.followup.send(f"Error: {e}", ephemeral=True)
 
 
-@bot.tree.command(name="msgsilent", description="Posts a pre-defined message silently.")
-@app_commands.default_permissions(manage_roles=True)
-async def msgsilent(interaction: discord.Interaction):
-    await _log_command_usage(interaction)
-    await interaction.response.send_message("Posting message silently...", ephemeral=True)
-    # Ensure the data directory exists
-    os.makedirs(DATA_DIR, exist_ok=True)
-    # Fetch the latest message.txt from GitHub before reading it
-    file_path = os.path.join(DATA_DIR, "message.txt")
-    fetch_file(MESSAGE_URL, file_path)
-    
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            await interaction.channel.send(f.read())
-        await interaction.followup.send("Message sent successfully.", ephemeral=True)
-    except Exception as e:
-        await interaction.followup.send(f"Error: {e}", ephemeral=True)
-
-
 @bot.tree.command(name="rolemsg", description="This is to push the stored roles messages to the defined channels.")
 @app_commands.default_permissions(manage_roles=True)
 async def rolemsg(interaction: discord.Interaction):
@@ -893,17 +878,6 @@ async def rolemsg(interaction: discord.Interaction):
     await _log_command_usage(interaction)
     await interaction.response.send_message("Fetching latest roles file from GitHub...", ephemeral=True)
     await _process_roles_messages(interaction, False)
-
-
-@bot.tree.command(name="rolesilent", description="This is to push the stored roles messages silently.")
-@app_commands.default_permissions(manage_roles=True)
-async def rolesilent(interaction: discord.Interaction):
-    """
-    Parses roles.txt and performs the configured actions silently.
-    """
-    await _log_command_usage(interaction)
-    await interaction.response.send_message("Fetching latest roles file from GitHub and processing silently...", ephemeral=True)
-    await _process_roles_messages(interaction, True)
 
 
 @bot.tree.command(name="refreshrole", description="Refreshes all roles messages in all channels.")
