@@ -381,7 +381,7 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
     Core logic for creating/updating roles messages.
     """
     # Ensure the data directory exists
-    os.makedirs(DATA_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     # Fetch the latest roles.txt from GitHub before processing it
     file_path = os.path.join(DATA_DIR, "roles.txt")
     fetch_file(ROLES_URL, file_path)
