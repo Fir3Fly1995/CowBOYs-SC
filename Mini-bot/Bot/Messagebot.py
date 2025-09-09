@@ -7,13 +7,15 @@ import requests
 import subprocess
 import asyncio
 import time
+import base64
+import json
 
 
 # --- GitHub Integration: Fetch token from env and URL definitions ---
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 BASE_URL = "https://raw.githubusercontent.com/Fir3Fly1995/CowBOYs-SC/main/Mini-bot/Bot/"
-REPO_URL = f"https://oauth2:{GITHUB_TOKEN}@github.com/Fir3Fly1995/CowBOYs-SC.git"
+REPO_API_URL = "https://api.github.com/repos/Fir3Fly1995/CowBOYs-SC/contents/Mini-bot/Bot/"
 MESSAGE_URL = BASE_URL + "message.txt"
 ROLES_URL = BASE_URL + "roles.txt"
 INSTRUCTIONS_URL = BASE_URL + "instructions.txt"
@@ -36,38 +38,75 @@ def fetch_file(url, local_path):
     except IOError as e:
         print(f"Error saving file to {local_path}: {e}")
 
-
-def push_to_github():
+def get_file_sha(filepath):
     """
-    Commits and pushes the updated roles.txt file to the GitHub repository.
+    Gets the SHA of a file from the GitHub repository using the GitHub API.
+    """
+    if not GITHUB_TOKEN:
+        print("GitHub token not found. Cannot get file SHA.")
+        return None
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    api_url = f"{REPO_API_URL}{os.path.basename(filepath)}"
+    
+    try:
+        r = requests.get(api_url, headers=headers)
+        r.raise_for_status()
+        return r.json().get("sha")
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            print(f"File {filepath} not found on GitHub. Creating a new one.")
+            return None
+        print(f"Error getting file SHA from GitHub: {e}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred getting file SHA: {e}")
+        return None
+
+
+def update_github_file(filepath, commit_message):
+    """
+    Updates a file on the GitHub repository using the GitHub API.
     """
     if not GITHUB_TOKEN:
         print("GitHub token not found. Skipping push to GitHub.")
         return
 
+    sha = get_file_sha(filepath)
+    if sha is None:
+        # If the file doesn't exist, we can't update it, so we'll just log and exit.
+        # It's assumed the file will be created by a manual process.
+        print("Could not get file SHA. Skipping file update.")
+        return
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    encoded_content = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    payload = {
+        "message": commit_message,
+        "content": encoded_content,
+        "sha": sha
+    }
+
+    api_url = f"{REPO_API_URL}{os.path.basename(filepath)}"
+    
     try:
-        # Use subprocess to execute git commands
-        # Configure Git with user details for the commit
-        subprocess.run(['git', 'config', '--global', 'user.email', 'bot@example.com'], check=True)
-        subprocess.run(['git', 'config', '--global', 'user.name', 'CowboysBot'], check=True)
-
-        # Before pushing, pull the latest changes to prevent conflicts
-        subprocess.run(['git', 'pull', REPO_URL, 'main'], check=True)
-
-        # Add the roles.txt file
-        subprocess.run(['git', 'add', os.path.join(DATA_DIR, 'roles.txt')], check=True)
-
-        # Commit the changes
-        subprocess.run(['git', 'commit', '-m', 'Bot updated roles.txt with message ID'], check=True)
-
-        # Push the changes to the repository using the provided token for authentication
-        subprocess.run(['git', 'push', REPO_URL, 'main'], check=True)
-
-        print("Successfully pushed changes to GitHub.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error pushing to GitHub: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred during Git push: {e}")
+        r = requests.put(api_url, headers=headers, data=json.dumps(payload))
+        r.raise_for_status()
+        print(f"Successfully updated {filepath} on GitHub.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error updating file on GitHub: {e}")
+        print(f"Response content: {e.response.text}")
 
 
 # We need to enable specific intents for reactions and members
@@ -417,7 +456,8 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
         # Mark the block as skipped so it doesn't run again on the next /setuproles
         bot._mark_block_as_skipped(channel_id, config["message_id"])
 
-    push_to_github() # This is the crucial fix!
+    # This is the crucial fix!
+    update_github_file(file_path, "Bot updated roles.txt with new message IDs")
 
     await interaction.followup.send("Roles messages have been processed.", ephemeral=is_silent)
 
