@@ -715,8 +715,12 @@ async def clearchat(interaction: discord.Interaction, count: str):
     await interaction.response.defer(ephemeral=is_ephemeral)
     
     try:
+        # Get the original response message to prevent it from being purged.
+        original_message = await interaction.original_response()
+
         if count.lower() == "all":
-            deleted = await interaction.channel.purge()
+            # Purge all messages before the original message.
+            deleted = await interaction.channel.purge(before=original_message)
             await interaction.followup.send(f"Successfully deleted all messages in this channel.", ephemeral=is_ephemeral)
         else:
             try:
@@ -724,7 +728,8 @@ async def clearchat(interaction: discord.Interaction, count: str):
                 if limit <= 0:
                     await interaction.followup.send("Please provide a positive number of messages to delete.", ephemeral=is_ephemeral)
                     return
-                deleted = await interaction.channel.purge(limit=limit)
+                # Purge a specific number of messages before the original message.
+                deleted = await interaction.channel.purge(limit=limit, before=original_message)
                 await interaction.followup.send(f"Successfully deleted **{len(deleted)}** messages.", ephemeral=is_ephemeral)
             except ValueError:
                 await interaction.followup.send("Invalid input. Please provide a number or 'all'.", ephemeral=is_ephemeral)
