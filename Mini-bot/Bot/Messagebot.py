@@ -174,16 +174,17 @@ class RulesBot(commands.Bot):
         with open(self.roles_file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Split the content into individual blocks
-        blocks = re.split(r'Start\.|Skip\.', content, flags=re.IGNORECASE)[1:]
-        
+        # Split the content into individual blocks, keeping track of which are skipped
+        block_matches = re.finditer(r'(Start\.|Skip\.)(.*?)(?=Start\.|Skip\.|\Z)', content, flags=re.DOTALL | re.IGNORECASE)
+
         parsed_data = {}
-        for block in blocks:
-            lines = block.strip().split('\n')
-            
-            # Skip blocks that are marked to be skipped
-            if lines[0].strip().startswith("Skip."):
+        for match in block_matches:
+            block_type = match.group(1).strip().lower()
+            block = match.group(2).strip()
+            if block_type == 'skip.':
                 continue
+
+            lines = block.split('\n')
 
             # Parse channel ID and name
             channel_id_match = re.search(r'CH-ID<#(\d+)>', block)
@@ -193,13 +194,12 @@ class RulesBot(commands.Bot):
 
             message_id_match = re.search(r'MSG-ID:(\d+)', block)
             message_id = int(message_id_match.group(1)) if message_id_match else None
-            
+
             replace_msg = "Replace_MSG" in block
 
             message_text = None
             if "MSG;" in block:
                 msg_start = block.find("MSG;") + 4
-                # We now need to find the end of the message text, which can be either EMOTE or MK-BTN
                 msg_end_emote = block.find("EMOTE_1;", msg_start)
                 msg_end_btn = block.find("MK-BTN_1;", msg_start)
 
@@ -209,31 +209,27 @@ class RulesBot(commands.Bot):
                     message_text = block[msg_start:msg_end_btn].strip()
                 else:
                     message_text = block[msg_start:].strip()
-            
+
             emotes = {}
             buttons = {}
-            
+
             # Parse emotes and role names
             for i, line in enumerate(lines):
-                # This regex now correctly captures both unicode and custom emojis
                 emote_match = re.search(r'EMOTE_(\d+);\s*(<.+?|.+?)\s*\"(.+?)\"', line)
                 if emote_match:
-                    # Stripping the whitespace from the captured emoji string
                     emote = emote_match.group(2).strip()
                     label = emote_match.group(3).strip()
                     emote_number = emote_match.group(1)
-                    
+
                     is_toggle = False
-                    # Check for 'Toggle-Role' on the next line
                     if i + 1 < len(lines) and lines[i+1].strip().lower() == "toggle-role":
                         is_toggle = True
-                    
-                    # Ensure the emote number matches the give role number
+
                     give_role_match = re.search(f'Give_Role_{emote_number};\s*\"(.+?)\"', block)
                     if give_role_match:
                         role_name = give_role_match.group(1).strip()
                         emotes[emote] = {"label": label, "role_name": role_name, "is_toggle": is_toggle}
-                        
+
             # Parse buttons and role names
             for i, line in enumerate(lines):
                 button_match = re.search(r'MK-BTN_(\d+);\s*Colour=(\S+);\s*Emoji=(\S+);\s*Text=\"(.+?)\"', line)
@@ -242,11 +238,11 @@ class RulesBot(commands.Bot):
                     color = button_match.group(2)
                     emoji = button_match.group(3)
                     text = button_match.group(4)
-                    
+
                     is_toggle = False
                     if i + 1 < len(lines) and lines[i+1].strip().lower() == "toggle-role":
                         is_toggle = True
-                    
+
                     give_role_matches = re.findall(f'Give_Role_{button_number};\s*\"(.+?)\"', block)
                     if give_role_matches:
                         role_names = [r.strip() for r in give_role_matches]
@@ -265,7 +261,7 @@ class RulesBot(commands.Bot):
                 "emotes": emotes,
                 "buttons": buttons
             }
-        
+
         # Populate the bot's reaction_roles dictionary with the new structure
         self.reaction_roles = {}
         self.button_roles = {}
