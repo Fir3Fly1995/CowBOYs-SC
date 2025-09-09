@@ -13,7 +13,7 @@ import json
 # Set to True for verbose console output, False to disable.
 VERBOSE_LOGGING = True
 # Replace with the actual ID of your admin channel.
-ADMIN_CHANNEL_ID = 1414600881864835165 
+ADMIN_CHANNEL_ID = 123456789012345678 
 
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -146,7 +146,7 @@ class RulesBot(commands.Bot):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
 
-        # Send "I am alive" message to specified channels
+        # Send "I am alive" message to specified channels and then run refresh
         try:
             # Ensure the data directory exists
             os.makedirs(DATA_DIR, exist_ok=True)
@@ -158,9 +158,11 @@ class RulesBot(commands.Bot):
                 channel_id = int(channel_id_str)
                 channel = self.get_channel(channel_id)
                 if channel:
-                    await channel.send("Hello! I am alive, please run the `/refreshrole` command to update all message IDs.")
+                    await channel.send("Hello! I am alive, starting role message refresh process...")
+            await asyncio.sleep(1)
+            await _perform_refresh_task(self)
         except Exception as e:
-            print(f"Error sending 'I am alive' messages: {e}")
+            print(f"Error sending 'I am alive' messages or starting refresh: {e}")
 
     def load_reaction_roles(self):
         """
@@ -388,7 +390,8 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
     
     parsed_data = bot.load_reaction_roles()
     if not parsed_data:
-        await interaction.followup.send("Could not parse roles.txt or file is empty.", ephemeral=is_ephemeral)
+        if interaction:
+            await interaction.followup.send("Could not parse roles.txt or file is empty.", ephemeral=is_ephemeral)
         return
 
     for channel_id, config in parsed_data.items():
@@ -468,7 +471,81 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
     # This is the crucial fix!
     update_github_file(file_path, "Bot updated roles.txt with new message IDs")
 
-    await interaction.followup.send("Roles messages have been processed.", ephemeral=is_ephemeral)
+    if interaction:
+        await interaction.followup.send("Roles messages have been processed.", ephemeral=is_ephemeral)
+
+
+async def _perform_refresh_task(bot_instance: commands.Bot):
+    """
+    Performs the full refresh process without a user interaction.
+    Sends logs to the console and public messages to the admin channel.
+    """
+    if VERBOSE_LOGGING:
+        print("Starting automated refresh process.")
+    
+    deleted_count = 0
+    created_count = 0
+    
+    # Step 1: Fetch roles.txt file from GitHub.
+    roles_file_path = os.path.join(DATA_DIR, "roles.txt")
+    fetch_file(ROLES_URL, roles_file_path)
+    if VERBOSE_LOGGING:
+        print("Step 1 complete: roles.txt fetched from GitHub.")
+    await asyncio.sleep(1)
+
+    # Step 2: Delete old messages based on IDs from the fetched file.
+    parsed_data = _get_parsed_data(roles_file_path)
+    for channel_id, config in parsed_data.items():
+        if config["message_id"]:
+            channel = bot_instance.get_channel(channel_id)
+            if channel:
+                try:
+                    message = await channel.fetch_message(config["message_id"])
+                    await message.delete()
+                    deleted_count += 1
+                    if VERBOSE_LOGGING:
+                        print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
+                except discord.NotFound:
+                    if VERBOSE_LOGGING:
+                        print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
+                except Exception as e:
+                    print(f"Error deleting message: {e}")
+    if VERBOSE_LOGGING:
+        print(f"Step 2 complete: {deleted_count} old messages deleted.")
+    await asyncio.sleep(1)
+
+    # Step 3: Clean up the local roles.txt file.
+    bot_instance._unmark_all_blocks()
+    if VERBOSE_LOGGING:
+        print("Step 3 complete: Local roles.txt cleaned.")
+    await asyncio.sleep(1)
+
+    # Step 4: Run the rolesilent command logic to create new messages.
+    # We pass None for the interaction and True for is_ephemeral, but it will be ignored.
+    await _process_roles_messages(None, True)
+
+    # Count messages created by _process_roles_messages
+    new_parsed_data = _get_parsed_data(roles_file_path)
+    for config in new_parsed_data.values():
+        if config["message_id"]:
+            created_count += 1
+    if VERBOSE_LOGGING:
+        print(f"Step 4 complete: {created_count} new messages created.")
+
+    # Step 5: The _process_roles_messages function handles the final push to GitHub.
+    if VERBOSE_LOGGING:
+        print("Step 5 is part of the previous step. Process complete.")
+
+    try:
+        admin_channel = bot_instance.get_channel(ADMIN_CHANNEL_ID)
+        if admin_channel:
+            await admin_channel.send(
+                f"Role messages have been refreshed successfully.\n"
+                f"**{deleted_count}** old messages deleted.\n"
+                f"**{created_count}** new messages created."
+            )
+    except Exception as e:
+        print(f"Error sending refresh summary to admin channel: {e}")
 
 
 bot = RulesBot()
@@ -596,73 +673,8 @@ async def refreshrole(interaction: discord.Interaction):
     Refreshes all roles messages in all channels following a 5-step process.
     """
     is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
-    await interaction.response.send_message("Starting refresh process...", ephemeral=is_ephemeral)
-    
-    try:
-        deleted_count = 0
-        created_count = 0
-
-        # Step 1: Fetch roles.txt file from GitHub.
-        roles_file_path = os.path.join(DATA_DIR, "roles.txt")
-        fetch_file(ROLES_URL, roles_file_path)
-        if VERBOSE_LOGGING:
-            print("Step 1 complete: roles.txt fetched from GitHub.")
-        await asyncio.sleep(1)
-        
-        # Step 2: Delete old messages based on IDs from the fetched file.
-        parsed_data = _get_parsed_data(roles_file_path)
-        for channel_id, config in parsed_data.items():
-            if config["message_id"]:
-                channel = bot.get_channel(channel_id)
-                if channel:
-                    try:
-                        message = await channel.fetch_message(config["message_id"])
-                        await message.delete()
-                        deleted_count += 1
-                        if VERBOSE_LOGGING:
-                            print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
-                    except discord.NotFound:
-                        if VERBOSE_LOGGING:
-                            print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
-                    except Exception as e:
-                        print(f"Error deleting message: {e}")
-        if VERBOSE_LOGGING:
-            print(f"Step 2 complete: {deleted_count} old messages deleted.")
-        await asyncio.sleep(1)
-        
-        # Step 3: Clean up the local roles.txt file.
-        bot._unmark_all_blocks()
-        if VERBOSE_LOGGING:
-            print("Step 3 complete: Local roles.txt cleaned.")
-        await asyncio.sleep(1)
-        
-        # Step 4: Run the rolesilent command logic to create new messages.
-        await _process_roles_messages(interaction, is_ephemeral)
-        
-        # Count messages created by _process_roles_messages
-        new_parsed_data = _get_parsed_data(roles_file_path)
-        for config in new_parsed_data.values():
-            if config["message_id"]:
-                created_count += 1
-        
-        if VERBOSE_LOGGING:
-            print(f"Step 4 complete: {created_count} new messages created.")
-        
-        # Step 5: The _process_roles_messages function handles the final push to GitHub.
-        if VERBOSE_LOGGING:
-            print("Step 5 is part of the previous step. Process complete.")
-        
-        await interaction.followup.send(
-            f"Role messages have been refreshed successfully.\n"
-            f"**{deleted_count}** old messages deleted.\n"
-            f"**{created_count}** new messages created.",
-            ephemeral=is_ephemeral
-        )
-
-    except Exception as e:
-        await interaction.followup.send(f"An error occurred during the refresh process: {e}", ephemeral=is_ephemeral)
-        if VERBOSE_LOGGING:
-            print(f"An error occurred during the refresh process: {e}")
+    await interaction.response.defer(ephemeral=is_ephemeral)
+    await _perform_refresh_task(bot, interaction)
 
 
 @bot.tree.command(name="assistme", description="This will silently give you guidance on how to write the roles.txt file.")
@@ -722,91 +734,86 @@ async def verify(interaction: discord.Interaction):
     await interaction.response.send_message("This is a placeholder for the verify command.", ephemeral=is_ephemeral)
 
 
-@bot.listen()
-async def on_raw_reaction_add(payload):
+async def _perform_refresh_task(bot_instance: commands.Bot, interaction: discord.Interaction = None):
     """
-    This event fires when a user adds a reaction to a message.
-    It works for messages in the cache and for those that are not.
+    Performs the full refresh process. Can be called from on_ready or a slash command.
     """
-    if str(payload.message_id) in bot.reaction_roles:
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None:
-            return
+    if VERBOSE_LOGGING:
+        print("Starting automated refresh process.")
+    
+    deleted_count = 0
+    created_count = 0
 
-        # Explicitly fetch the member from the API to ensure the object is up-to-date
-        try:
-            member = await guild.fetch_member(payload.user_id)
-        except discord.NotFound:
-            if VERBOSE_LOGGING:
-                print(f"Member with ID {payload.user_id} not found.")
-            return
+    # Step 1: Fetch roles.txt file from GitHub.
+    roles_file_path = os.path.join(DATA_DIR, "roles.txt")
+    fetch_file(ROLES_URL, roles_file_path)
+    if VERBOSE_LOGGING:
+        print("Step 1 complete: roles.txt fetched from GitHub.")
+    await asyncio.sleep(1)
 
-        if member.bot:
-            return
-            
-        emoji = str(payload.emoji)
-        if emoji in bot.reaction_roles[str(payload.message_id)]:
-            role_data = bot.reaction_roles[str(payload.message_id)][emoji]
-            role_name = role_data.get("role_name")
-            is_toggle = role_data.get("is_toggle", False)
-            
-            role = discord.utils.get(guild.roles, name=role_name)
-            
-            if role is not None:
-                if is_toggle:
-                    if role in member.roles:
-                        # User has the role, so remove it
-                        await member.remove_roles(role)
-                        if VERBOSE_LOGGING:
-                            print(f"Toggled off role {role.name} for {member.display_name}")
-                    else:
-                        # User does not have the role, so add it
-                        await member.add_roles(role)
-                        if VERBOSE_LOGGING:
-                            print(f"Toggled on role {role.name} for {member.display_name}")
-                else:
-                    # Normal reaction role, add the role
-                    await member.add_roles(role)
+    # Step 2: Delete old messages based on IDs from the fetched file.
+    parsed_data = _get_parsed_data(roles_file_path)
+    for channel_id, config in parsed_data.items():
+        if config["message_id"]:
+            channel = bot_instance.get_channel(channel_id)
+            if channel:
+                try:
+                    message = await channel.fetch_message(config["message_id"])
+                    await message.delete()
+                    deleted_count += 1
                     if VERBOSE_LOGGING:
-                        print(f"Adding role {role.name} to {member.display_name}")
-                    
-
-@bot.listen()
-async def on_raw_reaction_remove(payload):
-    """
-    This event fires when a user removes a reaction from a message.
-    It only removes a role if the reaction is NOT a toggle-role.
-    """
-    if str(payload.message_id) in bot.reaction_roles:
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None:
-            return
-
-        # Explicitly fetch the member from the API to ensure the object is up-to-date
-        try:
-            member = await guild.fetch_member(payload.user_id)
-        except discord.NotFound:
-            if VERBOSE_LOGGING:
-                print(f"Member with ID {payload.user_id} not found.")
-            return
-
-        if member.bot:
-            return
-
-        emoji = str(payload.emoji)
-        if emoji in bot.reaction_roles[str(payload.message_id)]:
-            role_data = bot.reaction_roles[str(payload.message_id)][emoji]
-            is_toggle = role_data.get("is_toggle", False)
-
-            if not is_toggle:
-                role_name = role_data.get("role_name")
-                role = discord.utils.get(guild.roles, name=role_name)
-                
-                if role is not None:
+                        print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
+                except discord.NotFound:
                     if VERBOSE_LOGGING:
-                        print(f"Removing role {role.name} from {member.display_name}")
-                    await member.remove_roles(role)
+                        print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
+                except Exception as e:
+                    print(f"Error deleting message: {e}")
+    if VERBOSE_LOGGING:
+        print(f"Step 2 complete: {deleted_count} old messages deleted.")
+    await asyncio.sleep(1)
 
+    # Step 3: Clean up the local roles.txt file.
+    bot_instance._unmark_all_blocks()
+    if VERBOSE_LOGGING:
+        print("Step 3 complete: Local roles.txt cleaned.")
+    await asyncio.sleep(1)
+
+    # Step 4: Run the rolesilent command logic to create new messages.
+    # Pass the interaction if it exists, otherwise pass None.
+    await _process_roles_messages(interaction, True)
+
+    # Count messages created by _process_roles_messages
+    new_parsed_data = _get_parsed_data(roles_file_path)
+    for config in new_parsed_data.values():
+        if config["message_id"]:
+            created_count += 1
+    if VERBOSE_LOGGING:
+        print(f"Step 4 complete: {created_count} new messages created.")
+
+    # Step 5: The _process_roles_messages function handles the final push to GitHub.
+    if VERBOSE_LOGGING:
+        print("Step 5 is part of the previous step. Process complete.")
+    
+    # Send a summary message based on the context (ephemeral for slash command)
+    if interaction:
+        is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
+        await interaction.followup.send(
+            f"Role messages have been refreshed successfully.\n"
+            f"**{deleted_count}** old messages deleted.\n"
+            f"**{created_count}** new messages created.",
+            ephemeral=is_ephemeral
+        )
+    else:
+        try:
+            admin_channel = bot_instance.get_channel(ADMIN_CHANNEL_ID)
+            if admin_channel:
+                await admin_channel.send(
+                    f"Role messages have been refreshed successfully.\n"
+                    f"**{deleted_count}** old messages deleted.\n"
+                    f"**{created_count}** new messages created."
+                )
+        except Exception as e:
+            print(f"Error sending refresh summary to admin channel: {e}")
 
 if __name__ == "__main__":
     bot.run(TOKEN)
