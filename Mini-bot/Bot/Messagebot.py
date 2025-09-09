@@ -18,7 +18,7 @@ ADMIN_CHANNEL_ID = 1414600881864835165
 # Replace with the actual ID of your bot output channel.
 BOT_OUTPUT_CHANNEL_ID = 1414966305181798450
 # Replace with your User ID for direct pings.
-TARGET_USER_ID = 123456789012345678
+TARGET_USER_ID = 470337413923995675
 
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -486,12 +486,8 @@ class RoleView(discord.ui.View):
             for role in roles:
                 if role in member.roles:
                     await member.remove_roles(role)
-                    if VERBOSE_LOGGING:
-                        print(f"Toggled off role {role.name} for {member.display_name}")
                 else:
                     await member.add_roles(role)
-                    if VERBOSE_LOGGING:
-                        print(f"Toggled on role {role.name} for {member.display_name}")
             await interaction.followup.send(
                 f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
             )
