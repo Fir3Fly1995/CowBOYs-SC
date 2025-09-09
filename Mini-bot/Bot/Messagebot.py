@@ -358,11 +358,16 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
             try:
                 message_to_edit = await channel.fetch_message(config["message_id"])
             except discord.NotFound:
-                print(f"Message with ID {config['message_id']} not found.")
+                # This is the key fix. If the message is not found, we should treat it as a new message.
+                print(f"Message with ID {config['message_id']} not found. Will create a new one.")
+                config["message_id"] = None
+                
+            except Exception as e:
+                print(f"Error fetching message: {e}")
                 continue
             
             # Case 1.1: Replace existing message content
-            if config["replace_msg"] and config["message_text"]:
+            if config["message_id"] and config["replace_msg"] and config["message_text"]:
                 await message_to_edit.edit(content=config["message_text"])
 
         # Case 2: Create a new message
