@@ -17,6 +17,8 @@ VERBOSE_LOGGING = True
 ADMIN_CHANNEL_ID = 1414600881864835165 
 # Replace with the actual ID of your bot output channel.
 BOT_OUTPUT_CHANNEL_ID = 1414966305181798450
+# Replace with your User ID for direct pings.
+TARGET_USER_ID = 123456789012345678
 
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -147,6 +149,9 @@ class RulesBot(commands.Bot):
         """
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
+
+        # Send a direct ping to the target user when the bot comes online.
+        await _send_startup_message(self)
 
         # Run the automated refresh task on startup
         try:
@@ -720,6 +725,26 @@ async def _log_command_usage(interaction: discord.Interaction):
     except Exception as e:
         if VERBOSE_LOGGING:
             print(f"Error logging command usage: {e}")
+
+
+async def _send_startup_message(bot_instance):
+    """
+    Sends a direct message to a target user on bot startup.
+    """
+    try:
+        target_channel = bot_instance.get_channel(BOT_OUTPUT_CHANNEL_ID)
+        if target_channel:
+            # We can use a special format to ping a user.
+            user_mention = f"<@{TARGET_USER_ID}>"
+            message = (
+                f"Hey {user_mention}, I had to reboot. Or I just came back online after a reboot. I am ready!"
+            )
+            await target_channel.send(message)
+            if VERBOSE_LOGGING:
+                print(f"Sent startup message to {target_channel.name}")
+    except Exception as e:
+        print(f"Error sending startup message: {e}")
+
 
 bot = RulesBot()
 
