@@ -153,13 +153,14 @@ class RulesBot(commands.Bot):
         # Send a direct ping to the target user when the bot comes online.
         await _send_startup_message(self)
 
-        # Run the automated refresh task on startup
+        # On startup, just load the latest roles.txt and sync internal state (no delete/replace)
         try:
-            # Ensure the data directory exists
             os.makedirs(DATA_DIR, exist_ok=True)
-            await _perform_refresh_task(self)
+            fetch_file(ROLES_URL, self.roles_file_path)
+            self.load_reaction_roles()
+            await _resync_messages(self)
         except Exception as e:
-            print(f"Error running automated refresh: {e}")
+            print(f"Error running resync: {e}")
 
     def load_reaction_roles(self):
         """
