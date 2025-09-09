@@ -6,6 +6,7 @@ import re
 import requests
 import subprocess
 import asyncio
+import time
 
 
 # --- GitHub Integration: Fetch token from env and URL definitions ---
@@ -128,7 +129,7 @@ class RulesBot(commands.Bot):
             content = f.read()
 
         # Split the content into individual blocks
-        blocks = re.split(r'Start\.', content, flags=re.IGNORECASE)[1:]
+        blocks = re.split(r'Start\.|Skip\.', content, flags=re.IGNORECASE)[1:]
         
         parsed_data = {}
         for block in blocks:
@@ -241,7 +242,7 @@ class RulesBot(commands.Bot):
             content = f.read()
         
         # Regex to find the entire block that starts with 'Start.' and contains the specific CH-ID
-        block_pattern = re.compile(f'(Start\\.\\s*\\n\\s*CH-ID<#{channel_id}>.*?\\n\\s*End\\.)', re.DOTALL | re.IGNORECASE)
+        block_pattern = re.compile(f'(Start\\.\\s*\\n\\s*CH-ID<#(\d+)>.*?\\n\\s*End\\.)', re.DOTALL | re.IGNORECASE)
         match = block_pattern.search(content)
 
         if not match:
@@ -298,7 +299,6 @@ class RulesBot(commands.Bot):
 
         with open(self.roles_file_path, "w", encoding="utf-8") as f:
             f.write(content)
-        # We don't push to GitHub here, as the final push happens after roles are processed.
 
 
 def _get_parsed_data(roles_file_path):
@@ -528,18 +528,19 @@ async def rolesilent(interaction: discord.Interaction):
 @app_commands.default_permissions(manage_roles=True)
 async def refreshrole(interaction: discord.Interaction):
     """
-    Refreshes all roles messages in all channels.
+    Refreshes all roles messages in all channels following a 5-step process.
     """
     await interaction.response.send_message("Starting refresh process...", ephemeral=True)
     
     try:
-        # Step 1: Fetch roles.txt to get the current message IDs
+        # Step 1: Fetch roles.txt file from GitHub.
         roles_file_path = os.path.join(DATA_DIR, "roles.txt")
         fetch_file(ROLES_URL, roles_file_path)
+        print("Step 1 complete: roles.txt fetched from GitHub.")
+        await asyncio.sleep(1)
         
+        # Step 2: Delete old messages based on IDs from the fetched file.
         parsed_data = _get_parsed_data(roles_file_path)
-
-        # Step 2: Delete old messages
         for channel_id, config in parsed_data.items():
             if config["message_id"]:
                 channel = bot.get_channel(channel_id)
@@ -552,15 +553,21 @@ async def refreshrole(interaction: discord.Interaction):
                         print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
                     except Exception as e:
                         print(f"Error deleting message: {e}")
+        print("Step 2 complete: Old messages deleted.")
+        await asyncio.sleep(1)
         
-        # Step 3: Reset roles.txt by unmarking all blocks
+        # Step 3: Clean up the local roles.txt file.
         bot._unmark_all_blocks()
+        print("Step 3 complete: Local roles.txt cleaned.")
+        await asyncio.sleep(1)
         
-        # Step 4: Repost the roles messages using the core logic
+        # Step 4: Run the rolesilent command logic to create new messages.
         await _process_roles_messages(interaction, True)
+        print("Step 4 complete: New messages created.")
         
-        await interaction.followup.send("Role messages have been refreshed successfully.", ephemeral=True)
-
+        # Step 5: The _process_roles_messages function handles the final push to GitHub.
+        print("Step 5 is part of the previous step. Process complete.")
+        
     except Exception as e:
         await interaction.followup.send(f"An error occurred during the refresh process: {e}", ephemeral=True)
         print(f"An error occurred during the refresh process: {e}")
