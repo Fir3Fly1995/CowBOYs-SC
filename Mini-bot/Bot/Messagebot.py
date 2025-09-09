@@ -4,9 +4,7 @@ from discord.ext import commands
 import os
 import re
 import requests
-import subprocess
 import asyncio
-import time
 import base64
 import json
 
@@ -14,6 +12,8 @@ import json
 # --- Logging and GitHub Integration ---
 # Set to True for verbose console output, False to disable.
 VERBOSE_LOGGING = True
+# Replace with the actual ID of your admin channel.
+ADMIN_CHANNEL_ID = 1414600881864835165 
 
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -376,7 +376,7 @@ def _get_parsed_data(roles_file_path):
     return parsed_data
 
 
-async def _process_roles_messages(interaction: discord.Interaction, is_silent: bool):
+async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral: bool):
     """
     Core logic for creating/updating roles messages.
     """
@@ -388,7 +388,7 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
     
     parsed_data = bot.load_reaction_roles()
     if not parsed_data:
-        await interaction.followup.send("Could not parse roles.txt or file is empty.", ephemeral=is_silent)
+        await interaction.followup.send("Could not parse roles.txt or file is empty.", ephemeral=is_ephemeral)
         return
 
     for channel_id, config in parsed_data.items():
@@ -468,7 +468,7 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
     # This is the crucial fix!
     update_github_file(file_path, "Bot updated roles.txt with new message IDs")
 
-    await interaction.followup.send("Roles messages have been processed.", ephemeral=is_silent)
+    await interaction.followup.send("Roles messages have been processed.", ephemeral=is_ephemeral)
 
 
 bot = RulesBot()
@@ -531,7 +531,9 @@ class RoleButton(discord.ui.Button):
 
 @bot.tree.command(name="message", description="This will post a pre-defined message")
 async def message(interaction: discord.Interaction):
-    await interaction.response.send_message("Fetching latest message from GitHub...", ephemeral=False)
+    # Set ephemeral to True if not in the admin channel
+    is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
+    await interaction.response.send_message("Fetching latest message from GitHub...", ephemeral=is_ephemeral)
     # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
     # Fetch the latest message.txt from GitHub before reading it
@@ -539,15 +541,17 @@ async def message(interaction: discord.Interaction):
     fetch_file(MESSAGE_URL, file_path)
     
     try:
+        await interaction.channel.send(file_path)
         with open(file_path, "r", encoding="utf-8") as f:
             await interaction.channel.send(f.read())
     except Exception as e:
-        await interaction.followup.send(f"Error: {e}", ephemeral=False)
+        await interaction.followup.send(f"Error: {e}", ephemeral=is_ephemeral)
 
 
 @bot.tree.command(name="msgsilent", description="Posts a pre-defined message silently.")
 @app_commands.default_permissions(manage_roles=True)
 async def msgsilent(interaction: discord.Interaction):
+    # This command is always ephemeral, so the check is not needed.
     await interaction.response.send_message("Posting message silently...", ephemeral=True)
     # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -556,6 +560,7 @@ async def msgsilent(interaction: discord.Interaction):
     fetch_file(MESSAGE_URL, file_path)
     
     try:
+        await interaction.channel.send(file_path)
         with open(file_path, "r", encoding="utf-8") as f:
             await interaction.channel.send(f.read())
     except Exception as e:
@@ -568,8 +573,9 @@ async def rolemsg(interaction: discord.Interaction):
     """
     Parses roles.txt and performs the configured actions.
     """
-    await interaction.response.send_message("Fetching latest roles file from GitHub...", ephemeral=False)
-    await _process_roles_messages(interaction, False)
+    is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
+    await interaction.response.send_message("Fetching latest roles file from GitHub...", ephemeral=is_ephemeral)
+    await _process_roles_messages(interaction, is_ephemeral)
 
 
 @bot.tree.command(name="rolesilent", description="This is to push the stored roles messages silently.")
@@ -578,6 +584,7 @@ async def rolesilent(interaction: discord.Interaction):
     """
     Parses roles.txt and performs the configured actions silently.
     """
+    # This command is always ephemeral, so the check is not needed.
     await interaction.response.send_message("Fetching latest roles file from GitHub and processing silently...", ephemeral=True)
     await _process_roles_messages(interaction, True)
 
@@ -588,7 +595,8 @@ async def refreshrole(interaction: discord.Interaction):
     """
     Refreshes all roles messages in all channels following a 5-step process.
     """
-    await interaction.response.send_message("Starting refresh process...", ephemeral=True)
+    is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
+    await interaction.response.send_message("Starting refresh process...", ephemeral=is_ephemeral)
     
     try:
         deleted_count = 0
@@ -629,7 +637,7 @@ async def refreshrole(interaction: discord.Interaction):
         await asyncio.sleep(1)
         
         # Step 4: Run the rolesilent command logic to create new messages.
-        await _process_roles_messages(interaction, True)
+        await _process_roles_messages(interaction, is_ephemeral)
         
         # Count messages created by _process_roles_messages
         new_parsed_data = _get_parsed_data(roles_file_path)
@@ -648,17 +656,19 @@ async def refreshrole(interaction: discord.Interaction):
             f"Role messages have been refreshed successfully.\n"
             f"**{deleted_count}** old messages deleted.\n"
             f"**{created_count}** new messages created.",
-            ephemeral=True
+            ephemeral=is_ephemeral
         )
 
     except Exception as e:
-        await interaction.followup.send(f"An error occurred during the refresh process: {e}", ephemeral=True)
-        print(f"An error occurred during the refresh process: {e}")
+        await interaction.followup.send(f"An error occurred during the refresh process: {e}", ephemeral=is_ephemeral)
+        if VERBOSE_LOGGING:
+            print(f"An error occurred during the refresh process: {e}")
 
 
 @bot.tree.command(name="assistme", description="This will silently give you guidance on how to write the roles.txt file.")
 @app_commands.default_permissions(manage_roles=True)
 async def assistme(interaction: discord.Interaction):
+    # This command is always ephemeral, so the check is not needed.
     await interaction.response.send_message("Fetching instructions...", ephemeral=True)
     # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -671,6 +681,45 @@ async def assistme(interaction: discord.Interaction):
             await interaction.followup.send(f.read(), ephemeral=True)
     except Exception as e:
         await interaction.followup.send(f"Error: {e}", ephemeral=True)
+
+
+@bot.tree.command(name="clearchat", description="Deletes messages from the current channel.")
+@app_commands.describe(count="The number of messages to delete, or 'all' to delete all.")
+@app_commands.default_permissions(manage_messages=True)
+async def clearchat(interaction: discord.Interaction, count: str):
+    """
+    Deletes messages from the current channel.
+    """
+    is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
+    await interaction.response.defer(ephemeral=is_ephemeral)
+    
+    try:
+        if count.lower() == "all":
+            deleted = await interaction.channel.purge()
+            await interaction.followup.send(f"Successfully deleted all messages in this channel.", ephemeral=is_ephemeral)
+        else:
+            try:
+                limit = int(count)
+                if limit <= 0:
+                    await interaction.followup.send("Please provide a positive number of messages to delete.", ephemeral=is_ephemeral)
+                    return
+                deleted = await interaction.channel.purge(limit=limit)
+                await interaction.followup.send(f"Successfully deleted **{len(deleted)}** messages.", ephemeral=is_ephemeral)
+            except ValueError:
+                await interaction.followup.send("Invalid input. Please provide a number or 'all'.", ephemeral=is_ephemeral)
+    except discord.Forbidden:
+        await interaction.followup.send("I don't have the required permissions to delete messages.", ephemeral=is_ephemeral)
+    except Exception as e:
+        await interaction.followup.send(f"An error occurred: {e}", ephemeral=is_ephemeral)
+        if VERBOSE_LOGGING:
+            print(f"An error occurred during clear chat: {e}")
+
+
+@bot.tree.command(name="verify", description="Placeholder command for verification.")
+@app_commands.default_permissions(manage_roles=True)
+async def verify(interaction: discord.Interaction):
+    is_ephemeral = interaction.channel.id != ADMIN_CHANNEL_ID
+    await interaction.response.send_message("This is a placeholder for the verify command.", ephemeral=is_ephemeral)
 
 
 @bot.listen()
