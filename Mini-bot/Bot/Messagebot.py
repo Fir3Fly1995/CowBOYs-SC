@@ -277,8 +277,8 @@ class RulesBot(commands.Bot):
 
     def _unmark_all_blocks(self):
         """
-        Rewrites the roles.txt file, replacing 'Skip.' with 'Start.'
-        and removing all message IDs.
+        Rewrites the roles.txt file, replacing 'Skip.' with 'Start.',
+        and removing all MSG-ID and Replace_MSG lines.
         """
         if not os.path.exists(self.roles_file_path):
             print("roles.txt not found. Cannot unmark blocks.")
@@ -286,16 +286,18 @@ class RulesBot(commands.Bot):
 
         with open(self.roles_file_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         # Replace all 'Skip.' with 'Start.'
         content = re.sub(r'Skip\.', 'Start.', content, flags=re.IGNORECASE)
 
         # Remove all MSG-ID lines
         content = re.sub(r'MSG-ID:\d+\s*\n', '', content, flags=re.IGNORECASE)
 
+        # Remove all Replace_MSG lines
+        content = re.sub(r'Replace_MSG\s*\n', '', content, flags=re.IGNORECASE)
+
         with open(self.roles_file_path, "w", encoding="utf-8") as f:
             f.write(content)
-        
         # We don't push to GitHub here, as the final push happens after roles are processed.
 
 
