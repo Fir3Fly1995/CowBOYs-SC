@@ -731,6 +731,8 @@ async def _send_startup_message(bot_instance):
     """
     Sends a direct message to a target user on bot startup.
     """
+    # Wait until the bot is fully ready and has its cache loaded
+    await bot_instance.wait_until_ready()
     try:
         target_user = await bot_instance.fetch_user(TARGET_USER_ID)
         if target_user:
