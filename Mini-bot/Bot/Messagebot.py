@@ -273,7 +273,7 @@ class RulesBot(commands.Bot):
         with open(self.roles_file_path, "w", encoding="utf-8") as f:
             f.write(final_content)
             
-        push_to_github()
+        # PUSH TO GITHUB MOVED TO END OF _PROCESS_ROLES_MESSAGES
 
 
     def _unmark_all_blocks(self):
@@ -415,6 +415,8 @@ async def _process_roles_messages(interaction: discord.Interaction, is_silent: b
                     
         # Mark the block as skipped so it doesn't run again on the next /setuproles
         bot._mark_block_as_skipped(channel_id, config["message_id"])
+
+    push_to_github() # This is the crucial fix!
 
     await interaction.followup.send("Roles messages have been processed.", ephemeral=is_silent)
 
