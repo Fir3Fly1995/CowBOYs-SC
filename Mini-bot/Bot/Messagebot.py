@@ -739,6 +739,112 @@ async def _send_startup_message(bot_instance):
         print(f"Error sending startup message: {e}")
 
 
+async def _resync_messages(bot_instance: commands.Bot):
+    """
+    On bot startup, this function re-links persistent views to messages
+    with existing IDs in roles.txt. It does not delete or create new messages.
+    """
+    if VERBOSE_LOGGING:
+        print("Starting resync of messages and views from roles.txt.")
+
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        fetch_file(ROLES_URL, bot_instance.roles_file_path)
+        
+        with open(bot_instance.roles_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        parsed_blocks = re.finditer(r'(Start\.|Skip\.)(.*?)(?=Start\.|Skip\.|\Z)', content, flags=re.DOTALL | re.IGNORECASE)
+
+        for match in parsed_blocks:
+            block = match.group(2).strip()
+            
+            # Look for an existing MSG-ID
+            message_id_match = re.search(r'MSG-ID:(\d+)', block)
+            if not message_id_match:
+                if VERBOSE_LOGGING:
+                    print("Skipping block with no existing message ID.")
+                continue
+            
+            message_id = int(message_id_match.group(1))
+            
+            channel_id_match = re.search(r'CH-ID<#(\d+)>', block)
+            if not channel_id_match:
+                if VERBOSE_LOGGING:
+                    print("Skipping block with no channel ID.")
+                continue
+
+            channel_id = int(channel_id_match.group(1))
+            channel = bot_instance.get_channel(channel_id)
+            if not channel:
+                if VERBOSE_LOGGING:
+                    print(f"Channel with ID {channel_id} not found. Skipping resync for this block.")
+                continue
+            
+            # Look for existing button and reaction IDs
+            buttons = {}
+            button_matches = re.finditer(r'MK-BTN_(\d+);\s*Colour=(\S+);\s*Emoji=(\S+);\s*Text=\"(.+?)\"\s*BTN-ID_\1:(\d+)', block, flags=re.IGNORECASE)
+            for btn_match in button_matches:
+                btn_number = btn_match.group(1)
+                buttons[btn_number] = {
+                    "color": btn_match.group(2).upper(),
+                    "emoji": btn_match.group(3),
+                    "text": btn_match.group(4),
+                    "id": btn_match.group(5)
+                }
+
+            emotes = {}
+            emote_matches = re.finditer(r'EMOTE_(\d+);\s*(<.+?|.+?)\s*\"(.+?)\"\s*RCT-ID_\1:(\d+)', block, flags=re.IGNORECASE)
+            for emote_match in emote_matches:
+                emote_number = emote_match.group(1)
+                emotes[emote_number] = {
+                    "emoji": emote_match.group(2).strip(),
+                    "label": emote_match.group(3).strip(),
+                    "id": emote_match.group(4)
+                }
+            
+            # Re-attach the view to the message
+            try:
+                message_to_update = await channel.fetch_message(message_id)
+                # Build the view from the data in the file
+                view = discord.ui.View(timeout=None)
+                if buttons:
+                    for btn_data in buttons.values():
+                        # The custom ID must be unique and consistent
+                        custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{btn_data['id']}"
+                        button = discord.ui.Button(
+                            style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
+                            emoji=btn_data['emoji'],
+                            label=btn_data['text'],
+                            custom_id=custom_id
+                        )
+                        view.add_item(button)
+                
+                await message_to_update.edit(view=view)
+
+                if VERBOSE_LOGGING:
+                    print(f"Successfully re-synced view for message ID {message_id} in channel {channel.name}.")
+                
+                # Re-add reactions just in case they were removed
+                if emotes:
+                    for emote_data in emotes.values():
+                        try:
+                            await message_to_update.add_reaction(emote_data['emoji'])
+                        except discord.HTTPException as e:
+                            print(f"Error adding reaction {emote_data['emoji']}: {e}")
+                            
+            except discord.NotFound:
+                if VERBOSE_LOGGING:
+                    print(f"Message with ID {message_id} not found. Skipping resync for this message.")
+            except Exception as e:
+                print(f"Error during resync for message {message_id}: {e}")
+    except Exception as e:
+        print(f"Error during resync process: {e}")
+                
+    if VERBOSE_LOGGING:
+        print("Resync process complete.")
+
+
 bot = RulesBot()
 
 @bot.tree.command(name="message", description="This will post a pre-defined message")
