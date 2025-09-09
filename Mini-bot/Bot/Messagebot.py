@@ -138,9 +138,8 @@ class RulesBot(commands.Bot):
         # Sync slash commands on startup
         await self.tree.sync()
         print(f'{self.user} has connected to Discord!')
-        # Note: We no longer load reaction roles at startup,
-        # but rather when the /setuproles command is called.
-
+        # We now add our persistent view back to the bot on setup
+        self.add_view(RoleView(self))
 
     async def on_ready(self):
         """
@@ -371,6 +370,140 @@ def _get_parsed_data(roles_file_path):
     return parsed_data
 
 
+class RoleButton(discord.ui.Button):
+    COLOR_MAP = {
+        "green": discord.ButtonStyle.success,
+        "red": discord.ButtonStyle.danger,
+        "blue": discord.ButtonStyle.primary,
+        "blurple": discord.ButtonStyle.primary,
+        "grey": discord.ButtonStyle.secondary,
+        "gray": discord.ButtonStyle.secondary,
+    }
+
+    def __init__(self, color, emoji, text, role_names, is_toggle):
+        style = self.COLOR_MAP.get(color.lower(), discord.ButtonStyle.secondary)
+        custom_id = f"role_button:{';'.join(role_names)}:{is_toggle}"
+        super().__init__(style=style, emoji=emoji, label=text, custom_id=custom_id)
+        self.role_names = role_names
+        self.is_toggle = is_toggle
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        member = interaction.user
+
+        roles = [discord.utils.get(guild.roles, name=role_name) for role_name in self.role_names]
+        roles = [role for role in roles if role is not None]
+
+        if not roles:
+            await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
+            return
+
+        if self.is_toggle:
+            for role in roles:
+                if role in member.roles:
+                    await member.remove_roles(role)
+                else:
+                    await member.add_roles(role)
+            await interaction.followup.send(
+                f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
+            )
+        else:
+            added = []
+            for role in roles:
+                if role not in member.roles:
+                    await member.add_roles(role)
+                    added.append(role.name)
+            if added:
+                await interaction.followup.send(
+                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    "You already have all the roles.", ephemeral=True
+                )
+
+
+class RoleView(discord.ui.View):
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_dynamic_buttons()
+
+    def add_dynamic_buttons(self):
+        """Adds buttons from roles.txt to the view."""
+        os.makedirs(DATA_DIR, exist_ok=True)
+        fetch_file(ROLES_URL, os.path.join(DATA_DIR, "roles.txt"))
+        
+        parsed_data = self.bot.load_reaction_roles()
+        
+        for _, config in parsed_data.items():
+            if config["buttons"]:
+                for _, btn_data in config["buttons"].items():
+                    # The custom ID must be unique per button type and role
+                    custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
+                    
+                    button = discord.ui.Button(
+                        style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
+                        emoji=btn_data['emoji'],
+                        label=btn_data['text'],
+                        custom_id=custom_id
+                    )
+                    self.add_item(button)
+                    
+    @discord.ui.button(custom_id="role_button:callback")
+    async def dynamic_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+        """Handle dynamic button callbacks."""
+        
+        # Custom ID format: "role_button:<color>:<emoji>:<text>:<role_names_list>:<is_toggle>"
+        custom_id_parts = button.custom_id.split(':')
+        
+        # Acknowledge the interaction immediately.
+        await interaction.response.defer(ephemeral=True)
+        
+        guild = interaction.guild
+        member = interaction.user
+
+        # Extract data from the custom_id
+        role_names_str = custom_id_parts[3]
+        is_toggle = custom_id_parts[4].lower() == 'true'
+        role_names = role_names_str.split(';')
+        
+        roles = [discord.utils.get(guild.roles, name=role_name) for role_name in role_names]
+        roles = [role for role in roles if role is not None]
+
+        if not roles:
+            await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
+            return
+            
+        if is_toggle:
+            for role in roles:
+                if role in member.roles:
+                    await member.remove_roles(role)
+                    if VERBOSE_LOGGING:
+                        print(f"Toggled off role {role.name} for {member.display_name}")
+                else:
+                    await member.add_roles(role)
+                    if VERBOSE_LOGGING:
+                        print(f"Toggled on role {role.name} for {member.display_name}")
+            await interaction.followup.send(
+                f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
+            )
+        else:
+            added = []
+            for role in roles:
+                if role not in member.roles:
+                    await member.add_roles(role)
+                    added.append(role.name)
+            if added:
+                await interaction.followup.send(
+                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    "You already have all the roles.", ephemeral=True
+                )
+
 async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral: bool):
     """
     Core logic for creating/updating roles messages.
@@ -394,14 +527,17 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
                 print(f"Channel with ID {channel_id} not found.")
             continue
         
-        message_to_edit = None
+        message_to_update = None
+        new_message_id = None
         
         # Case 1: Existing message
         if config["message_id"]:
             try:
-                message_to_edit = await channel.fetch_message(config["message_id"])
+                message_to_update = await channel.fetch_message(config["message_id"])
+                if VERBOSE_LOGGING:
+                    print(f"Found existing message with ID {config['message_id']}. Attempting to update it.")
             except discord.NotFound:
-                # This is the key fix. If the message is not found, we should treat it as a new message.
+                # If the message is not found, we should create a new one.
                 if VERBOSE_LOGGING:
                     print(f"Message with ID {config['message_id']} not found. Will create a new one.")
                 config["message_id"] = None
@@ -409,12 +545,8 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
             except Exception as e:
                 print(f"Error fetching message: {e}")
                 continue
-            
-            # Case 1.1: Replace existing message content
-            if config["message_id"] and config["replace_msg"] and config["message_text"]:
-                await message_to_edit.edit(content=config["message_text"])
-
-        # Case 2: Create a new message
+        
+        # Case 2: Create or update the message
         view = discord.ui.View(timeout=None)
         
         if config["buttons"]:
@@ -424,31 +556,28 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
                     emoji=btn_data['emoji'],
                     text=btn_data['text'],
                     role_names=btn_data['role_names'],
-                    is_toggle=btn_data['is_toggle'],
-                    bot=bot
+                    is_toggle=btn_data['is_toggle']
                 )
                 view.add_item(button)
         
-        if not config["message_id"]:
-            if config["message_text"]:
-                reaction_message = await channel.send(
-                    content=config["message_text"],
-                    view=view
-                )
-                config["message_id"] = reaction_message.id
-                
-                # Now we need to update the REACTION_ROLES and button_roles dictionaries with the new message ID
-                bot.reaction_roles[str(reaction_message.id)] = config['emotes']
-                bot.button_roles[str(reaction_message.id)] = config['buttons']
-                if VERBOSE_LOGGING:
-                    print(f"New message created with ID: {reaction_message.id}")
+        if message_to_update:
+            # We found an existing message, so we'll update it.
+            await message_to_update.edit(content=config["message_text"], view=view)
+            new_message_id = message_to_update.id
+            if VERBOSE_LOGGING:
+                print(f"Updated existing message with ID: {new_message_id}")
+        else:
+            # No existing message, so we'll create a new one.
+            reaction_message = await channel.send(
+                content=config["message_text"],
+                view=view
+            )
+            new_message_id = reaction_message.id
+            if VERBOSE_LOGGING:
+                print(f"New message created with ID: {new_message_id}")
             
-        else: # Add view to existing message
-            if config["buttons"]:
-                await message_to_edit.edit(view=view)
-        
         # Add reactions to the message
-        message_to_react = message_to_edit if message_to_edit else await channel.fetch_message(config["message_id"])
+        message_to_react = await channel.fetch_message(new_message_id)
         if message_to_react:
             for emote in config["emotes"]:
                 try:
@@ -459,7 +588,7 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
                     print("Please ensure you are using a raw unicode emoji or the full custom emoji format (<:name:id>).")
                     
         # Mark the block as skipped so it's not handled again
-        bot._mark_block_as_skipped(channel_id, config["message_id"])
+        bot._mark_block_as_skipped(channel_id, new_message_id)
 
     # This is the crucial fix!
     update_github_file(file_path, "Bot updated roles.txt with new message IDs")
@@ -594,62 +723,6 @@ async def _log_command_usage(interaction: discord.Interaction):
 
 bot = RulesBot()
 
-class RoleButton(discord.ui.Button):
-    COLOR_MAP = {
-        "green": discord.ButtonStyle.success,
-        "red": discord.ButtonStyle.danger,
-        "blue": discord.ButtonStyle.primary,
-        "blurple": discord.ButtonStyle.primary,
-        "grey": discord.ButtonStyle.secondary,
-        "gray": discord.ButtonStyle.secondary,
-    }
-
-    def __init__(self, color, emoji, text, role_names, is_toggle, bot):
-        style = self.COLOR_MAP.get(color.lower(), discord.ButtonStyle.secondary)
-        super().__init__(style=style, emoji=emoji, label=text)
-        self.role_names = role_names
-        self.is_toggle = is_toggle
-        self.bot = bot
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        guild = interaction.guild
-        member = interaction.user
-
-        roles = [discord.utils.get(guild.roles, name=role_name) for role_name in self.role_names]
-        roles = [role for role in roles if role is not None]
-
-        if not roles:
-            await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
-            return
-
-        if self.is_toggle:
-            # Toggle all roles
-            for role in roles:
-                if role in member.roles:
-                    await member.remove_roles(role)
-                else:
-                    await member.add_roles(role)
-            await interaction.followup.send(
-                f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
-            )
-        else:
-            # Add all roles if not already present
-            added = []
-            for role in roles:
-                if role not in member.roles:
-                    await member.add_roles(role)
-                    added.append(role.name)
-            if added:
-                await interaction.followup.send(
-                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
-                )
-            else:
-                await interaction.followup.send(
-                    "You already have all the roles.", ephemeral=True
-                )
-
-
 @bot.tree.command(name="message", description="This will post a pre-defined message")
 async def message(interaction: discord.Interaction):
     await _log_command_usage(interaction)
@@ -713,7 +786,7 @@ async def rolesilent(interaction: discord.Interaction):
 @app_commands.default_permissions(manage_roles=True)
 async def refreshrole(interaction: discord.Interaction):
     """
-    Refreshes all roles messages in all channels following a 5-step process.
+    Refreshes all roles messages in all channels.
     """
     await _log_command_usage(interaction)
     await interaction.response.defer(ephemeral=True)
