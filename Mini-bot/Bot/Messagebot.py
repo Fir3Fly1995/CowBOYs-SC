@@ -51,6 +51,9 @@ def push_to_github():
         subprocess.run(['git', 'config', '--global', 'user.email', 'bot@example.com'], check=True)
         subprocess.run(['git', 'config', '--global', 'user.name', 'CowboysBot'], check=True)
 
+        # Before pushing, pull the latest changes to prevent conflicts
+        subprocess.run(['git', 'pull', REPO_URL, 'main'], check=True)
+
         # Add the roles.txt file
         subprocess.run(['git', 'add', os.path.join(DATA_DIR, 'roles.txt')], check=True)
 
@@ -272,8 +275,6 @@ class RulesBot(commands.Bot):
 
         with open(self.roles_file_path, "w", encoding="utf-8") as f:
             f.write(final_content)
-            
-        # PUSH TO GITHUB MOVED TO END OF _PROCESS_ROLES_MESSAGES
 
 
     def _unmark_all_blocks(self):
