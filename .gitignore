@@ -1,2 +1,4 @@
 mini-bot/Bot/botenv
 .env
+Dockerfile
+docker-compose.yml

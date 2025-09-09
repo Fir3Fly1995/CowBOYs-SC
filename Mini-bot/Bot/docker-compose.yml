@@ -6,11 +6,12 @@ services:
     # Assign a custom name to the container for easy identification
     container_name: cowboys-bot
 
-    # The volumes section creates a bind mount from your local directory to the
-    # container's working directory. This means any changes you make locally
-    # will be reflected inside the container instantly.
+    # The volumes section creates a bind mount for the code and a named
+    # volume for the data files. Docker will automatically create the
+    # `mini-bot-data` volume the first time the bot runs.
     volumes:
-      - ./CowBOYs-SC/Mini-bot/Bot:/app
+      - .:/app
+      - mini-bot-data:/app/data
 
     # Automatically restart the container if it crashes or the Docker daemon restarts.
     restart: unless-stopped
@@ -23,3 +24,7 @@ services:
     # GITHUB_TOKEN="YOUR_GITHUB_PERSONAL_ACCESS_TOKEN_HERE"
     env_file:
       - .env
+
+# This declares the named volume that will be used by the bot service.
+volumes:
+  mini-bot-data:
