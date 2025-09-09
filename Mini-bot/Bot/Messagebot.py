@@ -14,7 +14,7 @@ import datetime
 # Set to True for verbose console output, False to disable.
 VERBOSE_LOGGING = True
 # Replace with the actual ID of your admin channel.
-ADMIN_CHANNEL_ID = 1414600881864835165 
+ADMIN_CHANNEL_ID = 1414600881864835165
 # Replace with the actual ID of your bot output channel.
 BOT_OUTPUT_CHANNEL_ID = 1414966305181798450
 # Replace with your User ID for direct pings.
