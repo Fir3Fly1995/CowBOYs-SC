@@ -1,6 +1,6 @@
 Skip.
 CH-ID<#1414600989016723614>
-MSG-ID:1414968262231457985
+MSG-ID:1414970324050509924
 MSG;
 @silent
 1. Poaching players from the org is forbidden - Poaching will be met with extreme consequences.
