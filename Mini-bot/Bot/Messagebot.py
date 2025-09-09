@@ -153,7 +153,7 @@ class RulesBot(commands.Bot):
         # Send a direct ping to the target user when the bot comes online.
         await _send_startup_message(self)
 
-        # On startup, just load the latest roles.txt and sync internal state (no delete/replace)
+        # On startup, re-sync messages and views based on the latest roles.txt
         try:
             os.makedirs(DATA_DIR, exist_ok=True)
             fetch_file(ROLES_URL, self.roles_file_path)
