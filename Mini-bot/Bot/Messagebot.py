@@ -283,17 +283,18 @@ class RulesBot(commands.Bot):
         with open(self.roles_file_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Regex to find the entire block that starts with 'Start.' and contains the specific CH-ID
-        block_pattern = re.compile(f'(Start\\.\\s*\\n\\s*CH-ID<#(\d+)>.*?\\n\\s*End\\.)', re.DOTALL | re.IGNORECASE)
+        # This regex is the fix. It now correctly finds blocks starting with either "Start." or "Skip."
+        block_pattern = re.compile(f'((Start|Skip)\\.\\s*\\n\\s*CH-ID<#({channel_id})>.*?\\n\\s*End\\.)', re.DOTALL | re.IGNORECASE)
         match = block_pattern.search(content)
 
         if not match:
+            print(f"Block for channel {channel_id} not found in roles.txt. Cannot mark as skipped.")
             return
 
         full_block = match.group(0)
         
-        # 1. Replace 'Start.' with 'Skip.'
-        new_block = full_block.replace("Start.", "Skip.", 1)
+        # 1. Replace 'Start.' or 'Skip.' with 'Skip.'
+        new_block = re.sub(r'^(Start|Skip)\.', 'Skip.', full_block, flags=re.IGNORECASE | re.MULTILINE)
         
         # 2. Add the MSG-ID right after the CH-ID line.
         # First, remove any existing MSG-ID to prevent duplicates.
