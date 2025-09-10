@@ -30,3 +30,6 @@
 	* user should ensure that the emoji is directly copied from Discord. 
 	* user should only have to state the colour of the button.
 	* user should only have to type in the message for the button.
+* react-x; EMOJI or :EMOJI_NAME:EMOJI_ID
+	* User replaces x with a number, EMOJI is copied from Discord into the .txt file. 
+	* If it's a custom emoji, the user must insert the emoji name between : and : then the emoji ID, no spaces allowed.
