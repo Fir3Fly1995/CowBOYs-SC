@@ -33,3 +33,23 @@
 * react-x; EMOJI or :EMOJI_NAME:EMOJI_ID
 	* User replaces x with a number, EMOJI is copied from Discord into the .txt file. 
 	* If it's a custom emoji, the user must insert the emoji name between : and : then the emoji ID, no spaces allowed.
+* data;
+	* User enters the data; flag, this tells the /sendroles command where it can stash data relating to buttons and reaction roles, in the event that the bot has to be restarted.
+* end;
+	* User places the end flag at the bottom of their block. This signals that they are done with this block.
+	* User leaves a blank line after this, then goes back to the top of the list with the start; flag.
+
+## Stage 3: How to write the roles for sending.
+
+#### Method 1: Discord to file
+1. User types out the entire message into the Bot Channel. User begins with start;, ends with end; using shift-enter to act as a line break. 
+2. User sends the message to the channel by pressing the enter key or send button. 
+3. user types /roles with arg: write and arg: channel ID of destination and arg: MessageID of the message they just sent, then hit enter. 
+4. Bot will read the message, will add the ch-id; of the destination channel to the correct spot, and will change the start; flag to write; to identify that the entry needs to be written to the file. 
+5. Bot will push an ephemeral message to the user in-line to say that the write operation is complete. 
+6. User can either type /sendroles to immediately mirror the role message out to the destination channel and the bot will delete the one the user sent into the bot channel earlier, or they can do /role arg: send and the bot will do the same action. 
+7. Bot will change the write; flag to skip; and will capture the msg-id; placing it below ch-id; in the message after sending the message to the destined channel.
+8. Bot will note the ID's of any reactions or buttons with reactid; and bttnid;, once per line after the data; flag.
+9. Bot will call the commander, who will then write the data to roles.xlsx where column 1 is the date, column 2 is the channel ID, column 3 is the Message ID, column 4 through 10 is the button ID's and 11 through 21 is the reaction ID. 
+
+The hope is that this data can be used later if the bot has to be restarted to re-link specific messages to button actions. 
