@@ -35,6 +35,30 @@
 	* If it's a custom emoji, the user must insert the emoji name between : and : then the emoji ID, no spaces allowed.
 * data;
 	* User enters the data; flag, this tells the /sendroles command where it can stash data relating to buttons and reaction roles, in the event that the bot has to be restarted.
+* give-role-btn-x; role name
+    * ties to btn-x with the argument: role name. 
+    * Example is give-role-btn-1; Happy Person
+    * The user who interracted with the button will receive the role tied to it.
+* take-role-btn-x; role name
+    * ties to button x with the argument: role name.
+    * Example is take-role-btn-1; Happy Person
+    * This will remove the 'Happy Person' role when the button is pressed.
+* toggle-role-btn-x; role name
+    * ties to btn-x with the argument: role name
+    * Example is toggle-role-btn-1; Strange Person
+    * The user who clicks it will be receiving the role on the first click, loose the role on the next, and all subsequent clicks will alternate between gaining and loosing the named role
+* give-react-x; role name
+    * ties to react-x with argument; role name
+    * Example is give-react-1; Sad Person
+    * This will only give the names role to the user who selects the reaction. 
+* take-react-x; role name
+    * ties to react-x with argument: role name
+    * Example is take-react-1; Sad Person
+    * User who selects this reaction will loose the named role. 
+* toggle-react-x; role name
+    * ties to react-x with argument: role name
+    * Example is toggle-react-1; StRaNgE PeRsOn
+    * User who clicks this reaction can freely take or loose the role tied to the reaction.
 * end;
 	* User places the end flag at the bottom of their block. This signals that they are done with this block.
 	* User leaves a blank line after this, then goes back to the top of the list with the start; flag.
