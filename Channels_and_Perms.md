@@ -178,7 +178,7 @@ Sheriff's Office - Mod/Admin Center
                 YES - Read History
                 YES - Connect
                 YES - Speak
-                NO  - Video
+                YES - Video
                 YES - Soundboard
                 YES - Voice Activity
                 YES - Use Activities
@@ -190,7 +190,7 @@ Sheriff's Office - Mod/Admin Center
                 YES - Read History
                 YES - Connect
                 YES - Speak
-                NO  - Video
+                YES - Video
                 YES - Soundboard
                 YES - Voice Activity
                 YES - Use Activities
