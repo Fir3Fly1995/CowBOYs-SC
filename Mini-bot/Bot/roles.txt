@@ -1,4 +1,4 @@
-Skip.
+Start.
 CH-ID<#1404524405207339149>
 MSG-ID:1417105111901012020
 Replace_MSG
@@ -14,6 +14,7 @@ MSG;
 9. Please use english where possible. Please contact Admin for a dedicated language-specific VC. 
 
 Hit the button below to mark your agreement.
+Visit <#1414917780402077736> if the below button doesnt work.
 MK-BTN_1; Colour=green; Emoji=✅; Text="Accept"
 Give_Role_1; "Rules Accepted"
 Give_Role_1; "Pilgrim"
