@@ -1,6 +1,6 @@
-Start.
+Skip.
 CH-ID<#1404524405207339149>
-MSG-ID:1417105111901012020
+MSG-ID:1417106085080334338
 Replace_MSG
 MSG;
 1. Poaching players from the org is forbidden - Poaching will be met with extreme consequences.
@@ -14,7 +14,6 @@ MSG;
 9. Please use english where possible. Please contact Admin for a dedicated language-specific VC. 
 
 Hit the button below to mark your agreement.
-Visit <#1414917780402077736> if the below button doesnt work.
 MK-BTN_1; Colour=green; Emoji=✅; Text="Accept"
 Give_Role_1; "Rules Accepted"
 Give_Role_1; "Pilgrim"
@@ -22,7 +21,7 @@ End.
 
 Skip.
 CH-ID<#1408384836003037344>
-MSG-ID:1417105114614726697
+MSG-ID:1417106087412502548
 Replace_MSG
 MSG;
 <@&1405914853000089600> - Everyone starts here. This is the starter role to allow you to hang out with us and for us to see if you can participate in some of our events.
