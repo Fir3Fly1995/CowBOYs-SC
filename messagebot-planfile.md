@@ -117,3 +117,11 @@ NOTE: There will be no human interraction for this piece, this is purely end use
 ## Stage 4: The Commander
 
 Commander will handle all communication between Discord and the other modules. 
+
+### Step 1: on_load(self)
+
+1. The Docker Container starts for the first time. The bot will DM me to notify me that it's started up!
+2. Bot will check roles.txt for contents. if empty, ignore and send a second DM notifying that roles.txt is empty. 
+
+### Step 2: Pushing Messages
+1. Bot command is used to push the roles messages out. roles.txt must be formatted accordingly for the roles maker module identify what roles are for where. 
