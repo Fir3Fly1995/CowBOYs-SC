@@ -112,3 +112,8 @@ NOTE: There will be no human interraction for this piece, this is purely end use
 8. If the user does not return within 24 hours to complete verification, the bot will mark column 5 Not Verified, retain the code, and will notify the bot channel. 
 9. Admin only may use /verify arg: unlock arg: Discord Username to unblock the blocked verification, which will delete the entire row where the discord username is found, releasing the 6 digit code for the blocked user to re-verify. Admins may use the /verify command with the unlock argument as often as they want to assist a user. 
 10. Admin may use the /verify arg: force arg: discord username arg: RSI_Username arg: True/False to force a manual verification. This will issue a 6 digit code directly to the spreadsheet and enter "FORCED" into Column 2 and the Discord User-ID <@xxxxxxxxxxxxx> of who forced it into Column 6 and their Discord_Username @MR_SHINY_KITTEN <---- (Thats an example!) in Column 7. 
+
+
+## Stage 4: The Commander
+
+Commander will handle all communication between Discord and the other modules. 
