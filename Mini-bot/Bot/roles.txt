@@ -13,7 +13,7 @@ MSG;
 9. Please use english where possible. Please contact Admin for a dedicated language-specific VC. 
 
 Hit the button below to mark your agreement & gain access to the rest of the server.
-Invite your friends along! Copy the link: https://discord.com/invite/rfSpAbeMxS
+Invite your friends along! Copy the link: "https://discord.com/invite/rfSpAbeMxS"
 MK-BTN_1; Colour=green; Emoji=✅; Text="Accept"
 Give_Role_1; "Rules Accepted"
 Give_Role_1; "Visitor"
