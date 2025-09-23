@@ -1,23 +1,12 @@
-This file stores bot configuration variables.
-Simply change the values to adjust the bot's behavior.
-After editing, save the file to GitHub and restart the bot.
-
-
-Bot variable logging (True/False). Overrides the global VERBOSE_LOGGING in the code.
 V_LOG: True
 
-ID of the admin channel (without the <#>)
+
 ADMIN_CH: 1414600881864835165
 
-ID of the target user to ping for special messages (without the <@>)
 USR_ID: 470337413923995675
 
-Simple logging (True/False). If true, the bot will write to S_LOGS.txt.
 S_LOG: True
 
-Infraction logging (True/False). If true, the bot will log messages with certain words.
 INF_LOG: True
 
-A comma-separated list of words/phrases to trigger an infraction log.
-Phrases with spaces must be written as a single block.
 BOLD_WORD: bold word, curse word, another phrase
