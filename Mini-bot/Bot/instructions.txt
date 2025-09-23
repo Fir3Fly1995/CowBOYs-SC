@@ -2,6 +2,7 @@ Order and format must be followed exactly.
 
 Skip.
 (Bot ignores block. Replace with Start. to include.)
+(Bot will silently rebind buttons where MSG-ID:ID_STRING is found, and reinbstate a button if its missing... This was a bug, but its now a feature)
 
 Start.
 (Begin a block.)
@@ -17,6 +18,8 @@ CH-ID<#channel_id>CHANNEL_NAME
 
 MSG-ID:message_id
 (Target a specific bot message. Auto-filled after running.)
+(Remove the MSG-ID:message_id_string flag from roles.txt to push a fresh instance. This replaces the Replace-MSG flag from prior deployments.)
+(The above is true now, due to an unintended function resulting in a bug where ther bot self sabotaged!)
 
 
 MSG;
