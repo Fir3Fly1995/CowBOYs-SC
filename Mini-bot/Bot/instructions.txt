@@ -38,3 +38,14 @@ End.
 (End of block. Start a new block with Start.)
 
 Contact <@470337413923995675> for help.
+
+
+Changenotes
+
+date: Today (32/09/25)
+Changed: Removed the Replace-MSG flag entirely fromt he regex and parsing logic of the roles.txt, please remove all instances of Replace-MSG fromt he roles.txt file, if not already done. 
+The removal of the Replace-MSG flag allows for the rebinding of buttons and reactions where the MSG-ID:message_id_string is present int he header of the Start./Skip. block. 
+The unintended result of this ius that where a Skip. flag is found, and a MSG-ID: flag is found below, the bot will use the on_ready() function to run the /rolemsg command logic flow to relink all buttons. 
+the bug was where the Replace-MSG flag was found, it would only edit the text of the message, deletign the buttons/reactions and issuing a new message ID. The removal of the Replace-MSG flag (and all related logic) is that the intended functionality of the bot is achieved, while also
+retaining the initial bug that made it impossible to properly relink messages or buttons/reactions to the message and reaction states/button states to the parent message. 
+TL;DR: A bug is now a feature! 
