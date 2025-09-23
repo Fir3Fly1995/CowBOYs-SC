@@ -121,6 +121,7 @@ def update_github_file(filepath, commit_message):
 intents = discord.Intents.default()
 intents.reactions = True
 intents.members = True
+intents.message_content = True
 
 
 class RulesBot(commands.Bot):
