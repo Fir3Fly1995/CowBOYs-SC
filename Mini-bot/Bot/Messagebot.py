@@ -767,5 +767,71 @@ async def on_raw_reaction_remove(payload):
                     await member.remove_roles(role)
 
 
+# --- New Event Listeners for Logging ---
+@bot.listen()
+async def on_voice_state_update(member, before, after):
+    """
+    Logs voice channel joins and leaves to the ADMIN_CHANNEL_ID.
+    """
+    admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+    if not admin_channel:
+        return
+
+    # User joined a voice channel
+    if before.channel is None and after.channel is not None:
+        await admin_channel.send(f"**{member.display_name}** has entered voice channel {after.channel.mention}")
+
+    # User left a voice channel
+    elif before.channel is not None and after.channel is None:
+        await admin_channel.send(f"**{member.display_name}** has left voice channel {before.channel.mention}")
+
+
+@bot.listen()
+async def on_message_delete(message):
+    """
+    Logs deleted messages to the ADMIN_CHANNEL_ID.
+    Note: This only works for messages in the bot's cache.
+    """
+    # Don't log bot messages
+    if message.author.bot:
+        return
+        
+    admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+    if not admin_channel:
+        return
+
+    # Find who deleted the message by checking the audit log
+    deleter = None
+    try:
+        async for entry in message.guild.audit_logs(limit=2, action=discord.AuditLogAction.message_delete):
+            if entry.target.id == message.author.id:
+                deleter = entry.user
+                break
+    except discord.Forbidden:
+        # The bot lacks the "View Audit Log" permission
+        if VERBOSE_LOGGING:
+            print("Bot lacks permissions to view audit log.")
+    except Exception as e:
+        if VERBOSE_LOGGING:
+            print(f"Error fetching audit log: {e}")
+
+    # Prepare the log message content
+    if deleter:
+        log_message = f"**Message deleted by {deleter.display_name}**\n"
+    else:
+        log_message = "**A message was deleted**\n"
+    
+    log_message += f"> **Author:** {message.author.mention}\n"
+    log_message += f"> **Channel:** {message.channel.mention}\n"
+    
+    # Check if the message content is available (i.e., it was in the bot's cache)
+    if message.content:
+        log_message += f"> **Content:** {message.content}"
+    else:
+        log_message += "> **Content:** (Content not available, message not in bot's cache)"
+
+    await admin_channel.send(log_message)
+
+
 if __name__ == "__main__":
     bot.run(TOKEN)
