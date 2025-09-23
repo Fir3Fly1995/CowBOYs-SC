@@ -156,14 +156,11 @@ class RulesBot(commands.Bot):
         except Exception as e:
             print(f"Error sending startup message: {e}")
 
-        # On startup, re-sync messages and views based on the latest roles.txt
+        # On startup, run the rolemsg logic to update all messages.
         try:
-            os.makedirs(DATA_DIR, exist_ok=True)
-            fetch_file(ROLES_URL, self.roles_file_path)
-            self.load_reaction_roles()
-            await _resync_messages(self)
+            await _process_roles_messages(self, None, True)
         except Exception as e:
-            print(f"Error running resync: {e}")
+            print(f"Error running silent role message update: {e}")
 
     def load_reaction_roles(self):
         """
@@ -263,7 +260,7 @@ class RulesBot(commands.Bot):
     def _mark_block_as_skipped(self, channel_id, message_id):
         """
         Rewrites the roles.txt file, replacing 'Start.' with 'Skip.'
-        and adding the message ID and Replace-Message flag.
+        and adding the message ID.
         """
         if not os.path.exists(self.roles_file_path):
             return
@@ -271,7 +268,6 @@ class RulesBot(commands.Bot):
         with open(self.roles_file_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # This regex is the fix. It now correctly finds blocks starting with either "Start." or "Skip."
         block_pattern = re.compile(f'((Start|Skip)\\.\\s*\\n\\s*CH-ID<#({channel_id})>.*?\\n\\s*End\\.)', re.DOTALL | re.IGNORECASE)
         match = block_pattern.search(content)
 
@@ -285,15 +281,17 @@ class RulesBot(commands.Bot):
         # 1. Replace 'Start.' or 'Skip.' with 'Skip.'
         new_block = re.sub(r'^(Start|Skip)\.', 'Skip.', full_block, flags=re.IGNORECASE | re.MULTILINE)
         
-        # 2. Remove any existing MSG-ID and Replace_MSG to prevent duplicates.
+        # 2. Remove any existing MSG-ID to prevent duplicates.
         new_block = re.sub(r'MSG-ID:\d+\s*\n', '', new_block, flags=re.IGNORECASE)
-        new_block = re.sub(r'Replace_MSG\s*\n', '', new_block, flags=re.IGNORECASE)
         
+        # 3. Remove any existing Replace_MSG lines.
+        new_block = re.sub(r'Replace_MSG\s*\n', '', new_block, flags=re.IGNORECASE)
+
         ch_id_line = f"CH-ID<#{channel_id}>"
-        # Now, insert the new MSG-ID line and Replace_MSG flag right after the CH-ID line.
+        # Now, insert the new MSG-ID line right after the CH-ID line.
         new_block = re.sub(
             f'({re.escape(ch_id_line)})',
-            f'\\1\nMSG-ID:{message_id}\nReplace_MSG',
+            f'\\1\nMSG-ID:{message_id}',
             new_block,
             1,
             flags=re.IGNORECASE
@@ -304,31 +302,6 @@ class RulesBot(commands.Bot):
 
         with open(self.roles_file_path, "w", encoding="utf-8") as f:
             f.write(final_content)
-
-
-    def _unmark_all_blocks(self):
-        """
-        Rewrites the roles.txt file, replacing 'Skip.' with 'Start.',
-        and removing all MSG-ID and Replace_MSG lines.
-        """
-        if not os.path.exists(self.roles_file_path):
-            print("roles.txt not found. Cannot unmark blocks.")
-            return
-
-        with open(self.roles_file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        # Replace all 'Skip.' with 'Start.'
-        content = re.sub(r'Skip\.', 'Start.', content, flags=re.IGNORECASE)
-
-        # Remove all MSG-ID lines
-        content = re.sub(r'MSG-ID:\d+\s*\n', '', content, flags=re.IGNORECASE)
-
-        # Remove all Replace_MSG lines
-        content = re.sub(r'Replace_MSG\s*\n', '', content, flags=re.IGNORECASE)
-
-        with open(self.roles_file_path, "w", encoding="utf-8") as f:
-            f.write(content)
 
 
 def _get_parsed_data(roles_file_path):
@@ -423,7 +396,7 @@ class RoleView(discord.ui.View):
     def add_dynamic_buttons(self):
         """Adds buttons from roles.txt to the view."""
         os.makedirs(DATA_DIR, exist_ok=True)
-        fetch_file(ROLES_URL, os.path.join(DATA_DIR, "roles.txt"))
+        # We assume the file is already fetched and loaded by the main bot loop
         
         parsed_data = self.bot.load_reaction_roles()
         
@@ -490,7 +463,7 @@ class RoleView(discord.ui.View):
                     "You already have all the roles.", ephemeral=True
                 )
 
-async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral: bool):
+async def _process_roles_messages(bot_instance, interaction: discord.Interaction = None, is_ephemeral: bool = False):
     """
     Core logic for creating/updating roles messages.
     """
@@ -500,14 +473,14 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
     file_path = os.path.join(DATA_DIR, "roles.txt")
     fetch_file(ROLES_URL, file_path)
     
-    parsed_data = bot.load_reaction_roles()
+    parsed_data = bot_instance.load_reaction_roles()
     if not parsed_data:
         if interaction:
             await interaction.followup.send("Could not parse roles.txt or file is empty.", ephemeral=is_ephemeral)
         return
 
     for channel_id, config in parsed_data.items():
-        channel = bot.get_channel(channel_id)
+        channel = bot_instance.get_channel(channel_id)
         if not channel:
             if VERBOSE_LOGGING:
                 print(f"Channel with ID {channel_id} not found.")
@@ -574,138 +547,12 @@ async def _process_roles_messages(interaction: discord.Interaction, is_ephemeral
                     print("Please ensure you are using a raw unicode emoji or the full custom emoji format (<:name:id>).")
                     
         # Mark the block as skipped so it's not handled again
-        bot._mark_block_as_skipped(channel_id, new_message_id)
+        bot_instance._mark_block_as_skipped(channel_id, new_message_id)
 
-    # This is the crucial fix!
     update_github_file(file_path, "Bot updated roles.txt with new message IDs")
 
     if interaction:
         await interaction.followup.send("Roles messages have been processed.", ephemeral=is_ephemeral)
-
-
-async def _perform_refresh_task(bot_instance: commands.Bot, interaction: discord.Interaction = None):
-    """
-    Performs the full refresh process. Can be called from on_ready or a slash command.
-    """
-    if VERBOSE_LOGGING:
-        print("Starting automated refresh process.")
-    
-    deleted_count = 0
-    created_count = 0
-
-    # Step 1: Fetch roles.txt file from GitHub.
-    roles_file_path = os.path.join(DATA_DIR, "roles.txt")
-    fetch_file(ROLES_URL, roles_file_path)
-    if VERBOSE_LOGGING:
-        print("Step 1 complete: roles.txt fetched from GitHub.")
-    await asyncio.sleep(1)
-
-    # Step 2: Delete old messages based on IDs from the fetched file.
-    parsed_data = _get_parsed_data(roles_file_path)
-    for channel_id, config in parsed_data.items():
-        if config["message_id"]:
-            channel = bot_instance.get_channel(channel_id)
-            if channel:
-                try:
-                    message = await channel.fetch_message(config["message_id"])
-                    await message.delete()
-                    deleted_count += 1
-                    if VERBOSE_LOGGING:
-                        print(f"Deleted old message with ID: {config['message_id']} from channel {channel.name}")
-                except discord.NotFound:
-                    if VERBOSE_LOGGING:
-                        print(f"Message with ID {config['message_id']} not found. Skipping deletion.")
-                except Exception as e:
-                    print(f"Error deleting message: {e}")
-    if VERBOSE_LOGGING:
-        print(f"Step 2 complete: {deleted_count} old messages deleted.")
-    await asyncio.sleep(1)
-
-    # Step 3: Clean up the local roles.txt file.
-    bot_instance._unmark_all_blocks()
-    if VERBOSE_LOGGING:
-        print("Step 3 complete: Local roles.txt cleaned.")
-    await asyncio.sleep(1)
-
-    # Step 4: Run the rolesilent command logic to create new messages.
-    # We pass None for the interaction and True for is_ephemeral, but it will be ignored.
-    await _process_roles_messages(interaction, True)
-
-    # Count messages created by _process_roles_messages
-    new_parsed_data = _get_parsed_data(roles_file_path)
-    for config in new_parsed_data.values():
-        if config["message_id"]:
-            created_count += 1
-    if VERBOSE_LOGGING:
-        print(f"Step 4 complete: {created_count} new messages created.")
-
-    # Step 5: The _process_roles_messages function handles the final push to GitHub.
-    if VERBOSE_LOGGING:
-        print("Step 5 is part of the previous step. Process complete.")
-    
-    # Send a summary message based on the context (ephemeral for slash command)
-    if interaction:
-        await _send_refresh_summary(interaction, deleted_count, created_count, ephemeral=True)
-    else:
-        await _send_refresh_summary(bot_instance, deleted_count, created_count)
-
-
-async def _send_refresh_summary(target, deleted_count, created_count, ephemeral=False):
-    """
-    Sends a summary message and purges temporary bot output.
-    `target` can be an `interaction` or a `bot_instance`.
-    """
-    try:
-        if isinstance(target, discord.Interaction):
-            # Send an ephemeral summary message for slash commands
-            await target.followup.send(
-                f"Role messages have been refreshed successfully.\n"
-                f"**{deleted_count}** old messages deleted.\n"
-                f"**{created_count}** new messages created.",
-                ephemeral=ephemeral
-            )
-        elif isinstance(target, commands.Bot):
-            # Purge all bot messages in the admin channel before sending the final summary
-            admin_channel = target.get_channel(ADMIN_CHANNEL_ID)
-            if admin_channel:
-                await admin_channel.purge(check=lambda m: m.author == target.user)
-
-                await admin_channel.send(
-                    f"Role messages have been refreshed successfully.\n"
-                    f"**{deleted_count}** old messages deleted.\n"
-                    f"**{created_count}** new messages created."
-                )
-    except Exception as e:
-        if VERBOSE_LOGGING:
-            print(f"Error sending refresh summary: {e}")
-
-
-async def _log_command_usage(interaction: discord.Interaction):
-    """
-    Logs command usage to a specified bot output channel.
-    """
-    command_name = interaction.command.name
-    
-    # Do not log the verify command
-    if command_name == "verify":
-        return
-        
-    try:
-        channel_id = BOT_OUTPUT_CHANNEL_ID
-        log_channel = bot.get_channel(channel_id)
-        if log_channel:
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            log_message = (
-                f"**Command Used:** `/{command_name}`\n"
-                f"**User:** {interaction.user.mention} ({interaction.user.id})\n"
-                f"**Channel:** {interaction.channel.mention} ({interaction.channel.id})\n"
-                f"**Time:** `{timestamp}`"
-            )
-            # Make sure this message is not ephemeral.
-            await log_channel.send(log_message)
-    except Exception as e:
-        if VERBOSE_LOGGING:
-            print(f"Error logging command usage: {e}")
 
 
 async def _send_startup_message(bot_instance):
@@ -727,118 +574,10 @@ async def _send_startup_message(bot_instance):
         print(f"Error sending startup message: {e}")
 
 
-async def _resync_messages(bot_instance: commands.Bot):
-    """
-    On bot startup, this function re-links persistent views to messages
-    with existing IDs in roles.txt. It does not delete or create new messages.
-    """
-    if VERBOSE_LOGGING:
-        print("Starting resync of messages and views from roles.txt.")
-
-    try:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        fetch_file(ROLES_URL, bot_instance.roles_file_path)
-        
-        with open(bot_instance.roles_file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        parsed_blocks = re.finditer(r'(Start\.|Skip\.)(.*?)(?=Start\.|Skip\.|\Z)', content, flags=re.DOTALL | re.IGNORECASE)
-
-        for match in parsed_blocks:
-            block = match.group(2).strip()
-            
-            # Look for an existing MSG-ID
-            message_id_match = re.search(r'MSG-ID:(\d+)', block)
-            if not message_id_match:
-                if VERBOSE_LOGGING:
-                    print("Skipping block with no existing message ID.")
-                continue
-            
-            message_id = int(message_id_match.group(1))
-            
-            channel_id_match = re.search(r'CH-ID<#(\d+)>', block)
-            if not channel_id_match:
-                if VERBOSE_LOGGING:
-                    print("Skipping block with no channel ID.")
-                continue
-
-            channel_id = int(channel_id_match.group(1))
-            channel = bot_instance.get_channel(channel_id)
-            if not channel:
-                if VERBOSE_LOGGING:
-                    print(f"Channel with ID {channel_id} not found. Skipping resync for this block.")
-                continue
-            
-            # Look for existing button and reaction IDs
-            buttons = {}
-            button_matches = re.finditer(r'MK-BTN_(\d+);\s*Colour=(\S+);\s*Emoji=(\S+);\s*Text=\"(.+?)\"\s*BTN-ID_\1:(\d+)', block, flags=re.IGNORECASE)
-            for btn_match in button_matches:
-                btn_number = btn_match.group(1)
-                buttons[btn_number] = {
-                    "color": btn_match.group(2).upper(),
-                    "emoji": btn_match.group(3),
-                    "text": btn_match.group(4),
-                    "id": btn_match.group(5)
-                }
-
-            emotes = {}
-            emote_matches = re.finditer(r'EMOTE_(\d+);\s*(<.+?|.+?)\s*\"(.+?)\"\s*RCT-ID_\1:(\d+)', block, flags=re.IGNORECASE)
-            for emote_match in emote_matches:
-                emote_number = emote_match.group(1)
-                emotes[emote_number] = {
-                    "emoji": emote_match.group(2).strip(),
-                    "label": emote_match.group(3).strip(),
-                    "id": emote_match.group(4)
-                }
-            
-            # Re-attach the view to the message
-            try:
-                message_to_update = await channel.fetch_message(message_id)
-                # Build the view from the data in the file
-                view = discord.ui.View(timeout=None)
-                if buttons:
-                    for btn_data in buttons.values():
-                        # The custom ID must be unique and consistent
-                        custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{btn_data['id']}"
-                        button = discord.ui.Button(
-                            style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
-                            emoji=btn_data['emoji'],
-                            label=btn_data['text'],
-                            custom_id=custom_id
-                        )
-                        view.add_item(button)
-                
-                await message_to_update.edit(view=view)
-
-                if VERBOSE_LOGGING:
-                    print(f"Successfully re-synced view for message ID {message_id} in channel {channel.name}.")
-                
-                # Re-add reactions just in case they were removed
-                if emotes:
-                    for emote_data in emotes.values():
-                        try:
-                            await message_to_update.add_reaction(emote_data['emoji'])
-                        except discord.HTTPException as e:
-                            print(f"Error adding reaction {emote_data['emoji']}: {e}")
-                            
-            except discord.NotFound:
-                if VERBOSE_LOGGING:
-                    print(f"Message with ID {message_id} not found. Skipping resync for this message.")
-            except Exception as e:
-                print(f"Error during resync for message {message_id}: {e}")
-                
-    except Exception as e:
-        print(f"Error during resync process: {e}")
-                
-    if VERBOSE_LOGGING:
-        print("Resync process complete.")
-
-
 bot = RulesBot()
 
 @bot.tree.command(name="message", description="This will post a pre-defined message")
 async def message(interaction: discord.Interaction):
-    await _log_command_usage(interaction)
     await interaction.response.send_message("Fetching latest message from GitHub...", ephemeral=True)
     # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -860,9 +599,8 @@ async def rolemsg(interaction: discord.Interaction):
     """
     Parses roles.txt and performs the configured actions.
     """
-    await _log_command_usage(interaction)
     await interaction.response.send_message("Fetching latest roles file from GitHub...", ephemeral=True)
-    await _process_roles_messages(interaction, False)
+    await _process_roles_messages(bot, interaction, False)
 
 
 @bot.tree.command(name="refreshrole", description="Refreshes all roles messages in all channels.")
@@ -871,15 +609,13 @@ async def refreshrole(interaction: discord.Interaction):
     """
     Refreshes all roles messages in all channels.
     """
-    await _log_command_usage(interaction)
     await interaction.response.defer(ephemeral=True)
-    await _perform_refresh_task(bot, interaction)
+    await _process_roles_messages(bot, interaction, True)
 
 
 @bot.tree.command(name="assistme", description="This will silently give you guidance on how to write the roles.txt file.")
 @app_commands.default_permissions(manage_roles=True)
 async def assistme(interaction: discord.Interaction):
-    await _log_command_usage(interaction)
     await interaction.response.send_message("Fetching instructions...", ephemeral=True)
     # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -898,7 +634,6 @@ async def assistme(interaction: discord.Interaction):
 @app_commands.describe(count="The number of messages to delete, or 'all' to delete all.")
 @app_commands.default_permissions(manage_messages=True)
 async def clearchat(interaction: discord.Interaction, count: str):
-    await _log_command_usage(interaction)
     await interaction.response.defer(ephemeral=True)
     
     try:
