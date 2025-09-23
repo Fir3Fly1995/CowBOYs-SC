@@ -15,7 +15,7 @@ MSG;
 Hit the button below to mark your agreement.
 MK-BTN_1; Colour=green; Emoji=✅; Text="Accept"
 Give_Role_1; "Rules Accepted"
-Give_Role_1; "Pilgrim"
+Give_Role_1; "Visitor"
 End.
 
 Start.
