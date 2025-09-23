@@ -19,6 +19,7 @@ Give_Role_1; "Visitor"
 End.
 
 Skip.
+Toggle-Role
 CH-ID<#1408384836003037344>
 MSG-ID:1417106087412502548
 MSG;
@@ -46,7 +47,6 @@ EMOTE_2;⛏️ "Digger/Scraper"
 EMOTE_3;🛻 "Merchant"
 EMOTE_4;🚔 "Renegade"
 EMOTE_5;☠️ "Head Hunter"
-Toggle-Role
 Give_Role_1; "Gunslinger"
 Give_Role_2; "Digger/Scraper"
 Give_Role_3; "Merchant"

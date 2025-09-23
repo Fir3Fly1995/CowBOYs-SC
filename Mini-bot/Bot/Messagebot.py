@@ -758,7 +758,8 @@ async def on_raw_reaction_remove(payload):
             role_data = bot.reaction_roles[str(payload.message_id)][emoji]
             is_toggle = role_data.get("is_toggle", False)
 
-            if not is_toggle:
+            # --- This is the fix ---
+            if is_toggle:
                 role_name = role_data.get("role_name")
                 role = discord.utils.get(guild.roles, name=role_name)
                 

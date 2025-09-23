@@ -6,14 +6,18 @@ Skip.
 Start.
 (Begin a block.)
 
+Toggle-Role
+(User can toggle role by clicking multiple times. [Not working yet])
+
+Static-Role
+(User can only get the role once.)
+
 CH-ID<#channel_id>CHANNEL_NAME
 (Target channel for the message.)
 
 MSG-ID:message_id
 (Target a specific bot message. Auto-filled after running.)
 
-Replace_MSG
-(Replace an existing bot message. Requires MSG-ID.)
 
 MSG;
 (Message content as it appears on Discord.)
@@ -23,12 +27,6 @@ EMOTE_x; EMOJI "Label"
 
 MK-BTN_x; Colour=COLOR; [Emoji=EMOJI;] Text=LABEL
 (Create a button. Colors: Red, Green, Blue, Grey/Gray, Blurple. Emoji optional.)
-
-Toggle-Role
-(User can toggle role by clicking multiple times. [Not working yet])
-
-Static-Role
-(User can only get the role once.)
 
 Give_Role_x; "Role Name"
 (x matches EMOTE_x or MK-BTN_x.)
