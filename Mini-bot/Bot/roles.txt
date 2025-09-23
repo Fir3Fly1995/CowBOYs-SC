@@ -1,6 +1,7 @@
-Start.
+Skip.
 CH-ID<#1404524405207339149>
 MSG-ID:1417106085080334338
+Replace_MSG
 MSG;
 1. Poaching players from the org is forbidden - Poaching will be met with extreme consequences.
 2. Do not use foul language in text channels - Read the room in Voice Channels.
@@ -18,9 +19,10 @@ Give_Role_1; "Rules Accepted"
 Give_Role_1; "Visitor"
 End.
 
-Start.
+Skip.
 CH-ID<#1408384836003037344>
 MSG-ID:1417106087412502548
+Replace_MSG
 MSG;
 <@&1405914853000089600> - Everyone starts here. This is the starter role to allow you to hang out with us and for us to see if you can participate in some of our events.
 <@&1405772499983011850> - You wish to join us and become a full time CowBOY. Treat it as an apprenticeship. We all need to know each other and see if our vibes match. You have access to events and content will be less limited.
