@@ -362,6 +362,8 @@ class RoleButton(discord.ui.Button):
             await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
             return
 
+        rules_accepted_role = discord.utils.get(guild.roles, name="Rules Accepted")
+        
         if self.is_toggle:
             for role in roles:
                 if role in member.roles:
@@ -372,19 +374,29 @@ class RoleButton(discord.ui.Button):
                 f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
             )
         else:
-            added = []
-            for role in roles:
-                if role not in member.roles:
-                    await member.add_roles(role)
-                    added.append(role.name)
-            if added:
-                await interaction.followup.send(
-                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
-                )
+            if rules_accepted_role and rules_accepted_role in roles:
+                if rules_accepted_role not in member.roles:
+                    await member.add_roles(rules_accepted_role)
+                    await interaction.followup.send(
+                        "Thanks for accepting the rules. Please go to channel <#1404524826978287816> and say hi! :) ", 
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send("You already have this role.", ephemeral=True)
             else:
-                await interaction.followup.send(
-                    "You already have all the roles.", ephemeral=True
-                )
+                added = []
+                for role in roles:
+                    if role not in member.roles:
+                        await member.add_roles(role)
+                        added.append(role.name)
+                if added:
+                    await interaction.followup.send(
+                        f"You have been given the roles: {', '.join(added)}", ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send(
+                        "You already have all the roles.", ephemeral=True
+                    )
 
 
 class RoleView(discord.ui.View):
@@ -439,6 +451,8 @@ class RoleView(discord.ui.View):
             await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
             return
             
+        rules_accepted_role = discord.utils.get(guild.roles, name="Rules Accepted")
+        
         if is_toggle:
             for role in roles:
                 if role in member.roles:
@@ -449,19 +463,29 @@ class RoleView(discord.ui.View):
                 f"Roles updated: {', '.join([role.name for role in roles])}", ephemeral=True
             )
         else:
-            added = []
-            for role in roles:
-                if role not in member.roles:
-                    await member.add_roles(role)
-                    added.append(role.name)
-            if added:
-                await interaction.followup.send(
-                    f"You have been given the roles: {', '.join(added)}", ephemeral=True
-                )
+            if rules_accepted_role and "Rules Accepted" in role_names:
+                if rules_accepted_role not in member.roles:
+                    await member.add_roles(rules_accepted_role)
+                    await interaction.followup.send(
+                        "Thanks for accepting the rules. Please go to channel <#1404524826978287816> and say hi! :) ", 
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send("You already have this role.", ephemeral=True)
             else:
-                await interaction.followup.send(
-                    "You already have all the roles.", ephemeral=True
-                )
+                added = []
+                for role in roles:
+                    if role not in member.roles:
+                        await member.add_roles(role)
+                        added.append(role.name)
+                if added:
+                    await interaction.followup.send(
+                        f"You have been given the roles: {', '.join(added)}", ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send(
+                        "You already have all the roles.", ephemeral=True
+                    )
 
 async def _process_roles_messages(bot_instance, interaction: discord.Interaction = None, is_ephemeral: bool = False):
     """
