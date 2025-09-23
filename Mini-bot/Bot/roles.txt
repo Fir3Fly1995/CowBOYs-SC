@@ -1,7 +1,6 @@
 Skip.
 CH-ID<#1404524405207339149>
 MSG-ID:1417106085080334338
-Replace_MSG
 MSG;
 1. Poaching players from the org is forbidden - Poaching will be met with extreme consequences.
 2. Do not use foul language in text channels - Read the room in Voice Channels.
@@ -13,7 +12,7 @@ MSG;
 8. Be tollerant of other peoples background and origins.
 9. Please use english where possible. Please contact Admin for a dedicated language-specific VC. 
 
-Hit the button below to mark your agreement.
+Hit the button below to mark your agreement & gain access to the rest of the server.
 MK-BTN_1; Colour=green; Emoji=✅; Text="Accept"
 Give_Role_1; "Rules Accepted"
 Give_Role_1; "Visitor"
