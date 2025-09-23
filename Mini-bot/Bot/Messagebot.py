@@ -13,10 +13,9 @@ import datetime
 # --- Logging and GitHub Integration ---
 # Set to True for verbose console output, False to disable.
 VERBOSE_LOGGING = True
-# Replace with the actual ID of your admin channel.
-ADMIN_CHANNEL_ID = 1414600881864835165
-# Replace with your User ID for direct pings.
-TARGET_USER_ID = 470337413923995675
+# Admin Channel and Target User ID variables will be loaded from BotVar.txt
+ADMIN_CHANNEL_ID = None
+TARGET_USER_ID = None
 
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -26,6 +25,7 @@ MESSAGE_URL = BASE_URL + "message.txt"
 ROLES_URL = BASE_URL + "roles.txt"
 INSTRUCTIONS_URL = BASE_URL + "instructions.txt"
 CHANNELS_URL = BASE_URL + "channels.txt"
+BOT_VAR_URL = BASE_URL + "BotVar.txt"
 DATA_DIR = "/app/data" # Directory inside the container to store files
 
 
@@ -122,6 +122,7 @@ intents = discord.Intents.default()
 intents.reactions = True
 intents.members = True
 intents.message_content = True
+intents.voice_states = True
 
 
 class RulesBot(commands.Bot):
@@ -134,6 +135,10 @@ class RulesBot(commands.Bot):
         self.instructions_file_path = os.path.join(DATA_DIR, "instructions.txt")
         self.channels_file_path = os.path.join(DATA_DIR, "channels.txt")
         self.message_file_path = os.path.join(DATA_DIR, "message.txt")
+        self.bot_var_file_path = os.path.join(DATA_DIR, "BotVar.txt")
+        self.s_logs_file_path = os.path.join(DATA_DIR, "S_LOGS.txt")
+        self.inf_file_path = os.path.join(DATA_DIR, "INF.txt")
+        self.config = {}
 
     async def setup_hook(self):
         # Sync slash commands on startup
@@ -149,6 +154,9 @@ class RulesBot(commands.Bot):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
 
+        # Load configuration variables from BotVar.txt
+        self.load_bot_vars()
+
         # Send a direct ping to the target user when the bot comes online.
         try:
             await _send_startup_message(self)
@@ -160,6 +168,55 @@ class RulesBot(commands.Bot):
             await _process_roles_messages(self, None, True)
         except Exception as e:
             print(f"Error running silent role message update: {e}")
+
+    def load_bot_vars(self):
+        """
+        Loads and parses the BotVar.txt file to set global configuration variables.
+        """
+        global VERBOSE_LOGGING, ADMIN_CHANNEL_ID, TARGET_USER_ID
+
+        if not os.path.exists(self.bot_var_file_path):
+            print(f"BotVar.txt not found. Using default configurations.")
+            return
+
+        with open(self.bot_var_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        config = {}
+        lines = content.strip().split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            try:
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip()
+                config[key] = value
+            except ValueError:
+                print(f"Warning: Skipping malformed line in BotVar.txt: {line}")
+        
+        self.config['V_LOG'] = config.get('V_LOG', 'True').lower() == 'true'
+        self.config['S_LOG'] = config.get('S_LOG', 'True').lower() == 'true'
+        self.config['INF_LOG'] = config.get('INF_LOG', 'True').lower() == 'true'
+        self.config['BOLD_WORD'] = [word.strip().lower() for word in config.get('BOLD_WORD', '').split(',') if word.strip()]
+        
+        try:
+            ADMIN_CHANNEL_ID = int(config.get('ADMIN_CH', '0'))
+            TARGET_USER_ID = int(config.get('USR_ID', '0'))
+        except (ValueError, TypeError):
+            print("Warning: ADMIN_CH or USR_ID in BotVar.txt is not a valid integer. Using default 0.")
+            ADMIN_CHANNEL_ID = 0
+            TARGET_USER_ID = 0
+
+        VERBOSE_LOGGING = self.config['V_LOG']
+        
+        if VERBOSE_LOGGING:
+            print("Bot configuration loaded:")
+            for key, value in self.config.items():
+                print(f"  {key}: {value}")
+            print(f"  ADMIN_CHANNEL_ID: {ADMIN_CHANNEL_ID}")
+            print(f"  TARGET_USER_ID: {TARGET_USER_ID}")
 
     def load_reaction_roles(self):
         """
@@ -178,14 +235,20 @@ class RulesBot(commands.Bot):
 
         parsed_data = {}
         for match in block_matches:
-            block_type = match.group(1).strip().lower()
             block = match.group(2).strip()
             
-            # Use a more robust regex to find all the different parts of the block.
-            # This is the crucial fix for the "could not parse" error.
             channel_id_match = re.search(r'CH-ID<#(\d+)>', block)
             message_id_match = re.search(r'MSG-ID:(\d+)', block)
-            replace_msg = "Replace_MSG" in block
+            
+            # Determine if the block is a toggle or static
+            toggle_role_match = re.search(r'Toggle-Role', block, flags=re.IGNORECASE)
+            static_role_match = re.search(r'Static-Role', block, flags=re.IGNORECASE)
+            
+            is_toggle = True # Default to Toggle-Role
+            if static_role_match:
+                is_toggle = False
+            elif toggle_role_match:
+                is_toggle = True
 
             message_text = None
             message_text_match = re.search(r'MSG;(.*?)(?:EMOTE_1|MK-BTN_1|$)', block, flags=re.DOTALL | re.IGNORECASE)
@@ -198,11 +261,6 @@ class RulesBot(commands.Bot):
                 emote = emote_match.group(2).strip()
                 label = emote_match.group(3).strip()
                 emote_number = emote_match.group(1)
-
-                is_toggle = False
-                toggle_role_match = re.search(f'Toggle-Role', block, flags=re.IGNORECASE)
-                if toggle_role_match:
-                    is_toggle = True
 
                 give_role_match = re.search(f'Give_Role_{emote_number};\s*\"(.+?)\"', block, flags=re.IGNORECASE)
                 if give_role_match:
@@ -217,11 +275,6 @@ class RulesBot(commands.Bot):
                 emoji = button_match.group(3)
                 text = button_match.group(4)
                 
-                is_toggle = False
-                toggle_role_match = re.search(f'Toggle-Role', block, flags=re.IGNORECASE)
-                if toggle_role_match:
-                    is_toggle = True
-
                 give_role_matches = re.findall(f'Give_Role_{button_number};\s*\"(.+?)\"', block, flags=re.IGNORECASE)
                 if give_role_matches:
                     role_names = [r.strip() for r in give_role_matches]
@@ -240,13 +293,11 @@ class RulesBot(commands.Bot):
                 
                 parsed_data[channel_id] = {
                     "message_id": message_id,
-                    "replace_msg": replace_msg,
                     "message_text": message_text,
                     "emotes": emotes,
                     "buttons": buttons
                 }
 
-        # Populate the bot's reaction_roles dictionary with the new structure
         self.reaction_roles = {}
         self.button_roles = {}
         for channel_id, data in parsed_data.items():
@@ -283,9 +334,6 @@ class RulesBot(commands.Bot):
         # 2. Remove any existing MSG-ID to prevent duplicates.
         new_block = re.sub(r'MSG-ID:\d+\s*\n', '', new_block, flags=re.IGNORECASE)
         
-        # 3. Remove any existing Replace_MSG lines.
-        new_block = re.sub(r'Replace_MSG\s*\n', '', new_block, flags=re.IGNORECASE)
-
         ch_id_line = f"CH-ID<#{channel_id}>"
         # Now, insert the new MSG-ID line right after the CH-ID line.
         new_block = re.sub(
@@ -377,7 +425,6 @@ class RoleButton(discord.ui.Button):
                     await member.add_roles(role)
                     added_roles.append(role.name)
             
-            # Check if the "Rules Accepted" role was among the added roles
             if "Rules Accepted" in added_roles:
                 await interaction.followup.send(
                     "Thanks for accepting the rules. Please go to channel <#1404524826978287816> and say hi! :) ", 
@@ -402,15 +449,13 @@ class RoleView(discord.ui.View):
     def add_dynamic_buttons(self):
         """Adds buttons from roles.txt to the view."""
         os.makedirs(DATA_DIR, exist_ok=True)
-        # We assume the file is already fetched and loaded by the main bot loop
         
         parsed_data = self.bot.load_reaction_roles()
         
         for _, config in parsed_data.items():
             if config["buttons"]:
                 for _, btn_data in config["buttons"].items():
-                    # The custom ID must be unique per button type and role
-                    custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
+                    custom_id = f"role_button:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
                     
                     button = discord.ui.Button(
                         style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
@@ -424,16 +469,13 @@ class RoleView(discord.ui.View):
     async def dynamic_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         """Handle dynamic button callbacks."""
         
-        # Custom ID format: "role_button:<color>:<emoji>:<text>:<role_names_list>:<is_toggle>"
         custom_id_parts = button.custom_id.split(':')
         
-        # Acknowledge the interaction immediately.
         await interaction.response.defer(ephemeral=True)
         
         guild = interaction.guild
         member = interaction.user
 
-        # Extract data from the custom_id
         role_names_str = custom_id_parts[3]
         is_toggle = custom_id_parts[4].lower() == 'true'
         role_names = role_names_str.split(';')
@@ -461,7 +503,6 @@ class RoleView(discord.ui.View):
                     await member.add_roles(role)
                     added_roles.append(role.name)
 
-            # Check if the "Rules Accepted" role was among the added roles
             if "Rules Accepted" in added_roles:
                 await interaction.followup.send(
                     "Thanks for accepting the rules. Please go to channel <#1404524826978287816> and say hi! :) ", 
@@ -480,9 +521,7 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
     """
     Core logic for creating/updating roles messages.
     """
-    # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
-    # Fetch the latest roles.txt from GitHub before processing it
     file_path = os.path.join(DATA_DIR, "roles.txt")
     fetch_file(ROLES_URL, file_path)
     
@@ -502,14 +541,12 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
         message_to_update = None
         new_message_id = None
         
-        # Case 1: Existing message
         if config["message_id"]:
             try:
                 message_to_update = await channel.fetch_message(config["message_id"])
                 if VERBOSE_LOGGING:
                     print(f"Found existing message with ID {config['message_id']}. Attempting to update it.")
             except discord.NotFound:
-                # If the message is not found, we should create a new one.
                 if VERBOSE_LOGGING:
                     print(f"Message with ID {config['message_id']} not found. Will create a new one.")
                 config["message_id"] = None
@@ -518,7 +555,6 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                 print(f"Error fetching message: {e}")
                 continue
         
-        # Case 2: Create or update the message
         view = discord.ui.View(timeout=None)
         
         if config["buttons"]:
@@ -533,13 +569,11 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                 view.add_item(button)
         
         if message_to_update:
-            # We found an existing message, so we'll update it.
             await message_to_update.edit(content=config["message_text"], view=view)
             new_message_id = message_to_update.id
             if VERBOSE_LOGGING:
                 print(f"Updated existing message with ID: {new_message_id}")
         else:
-            # No existing message, so we'll create a new one.
             reaction_message = await channel.send(
                 content=config["message_text"],
                 view=view
@@ -548,7 +582,6 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
             if VERBOSE_LOGGING:
                 print(f"New message created with ID: {new_message_id}")
             
-        # Add reactions to the message
         message_to_react = await channel.fetch_message(new_message_id)
         if message_to_react:
             for emote in config["emotes"]:
@@ -559,7 +592,6 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                     print("This is likely due to an invalid emoji format in your roles.txt file.")
                     print("Please ensure you are using a raw unicode emoji or the full custom emoji format (<:name:id>).")
                     
-        # Mark the block as skipped so it's not handled again
         bot_instance._mark_block_as_skipped(channel_id, new_message_id)
 
     update_github_file(file_path, "Bot updated roles.txt with new message IDs")
@@ -572,19 +604,31 @@ async def _send_startup_message(bot_instance):
     """
     Sends a direct message to a target user on bot startup.
     """
-    # Wait until the bot is fully ready and has its cache loaded
     await bot_instance.wait_until_ready()
     try:
-        target_user = await bot_instance.fetch_user(TARGET_USER_ID)
-        if target_user:
-            message = (
-                f"Hey, I had to reboot. Or I just came back online after a reboot. I am ready!"
-            )
-            await target_user.send(message)
-            if VERBOSE_LOGGING:
-                print(f"Sent startup message to {target_user.name}")
+        if TARGET_USER_ID:
+            target_user = await bot_instance.fetch_user(TARGET_USER_ID)
+            if target_user:
+                message = (
+                    f"Hey, I had to reboot. Or I just came back online after a reboot. I am ready!"
+                )
+                await target_user.send(message)
+                if VERBOSE_LOGGING:
+                    print(f"Sent startup message to {target_user.name}")
     except Exception as e:
         print(f"Error sending startup message: {e}")
+
+
+def _write_to_log_file(filepath, log_message):
+    """
+    Writes a timestamped message to a log file.
+    """
+    try:
+        timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+        with open(filepath, "a", encoding="utf-8") as f:
+            f.write(f"{timestamp} {log_message}\n")
+    except Exception as e:
+        print(f"Error writing to log file {filepath}: {e}")
 
 
 bot = RulesBot()
@@ -592,9 +636,7 @@ bot = RulesBot()
 @bot.tree.command(name="message", description="This will post a pre-defined message")
 async def message(interaction: discord.Interaction):
     await interaction.response.send_message("Fetching latest message from GitHub...", ephemeral=True)
-    # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
-    # Fetch the latest message.txt from GitHub before reading it
     file_path = os.path.join(DATA_DIR, "message.txt")
     fetch_file(MESSAGE_URL, file_path)
     
@@ -630,9 +672,7 @@ async def refreshrole(interaction: discord.Interaction):
 @app_commands.default_permissions(manage_roles=True)
 async def assistme(interaction: discord.Interaction):
     await interaction.response.send_message("Fetching instructions...", ephemeral=True)
-    # Ensure the data directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
-    # Fetch the instructions.txt from GitHub before reading it
     file_path = os.path.join(DATA_DIR, "instructions.txt")
     fetch_file(INSTRUCTIONS_URL, file_path)
     
@@ -650,11 +690,9 @@ async def clearchat(interaction: discord.Interaction, count: str):
     await interaction.response.defer(ephemeral=True)
     
     try:
-        # Get the original response message to prevent it from being purged.
         original_message = await interaction.original_response()
 
         if count.lower() == "all":
-            # Purge all messages before the original message.
             deleted = await interaction.channel.purge(before=original_message)
             await interaction.followup.send(f"Successfully deleted all messages in this channel.", ephemeral=True)
         else:
@@ -663,7 +701,6 @@ async def clearchat(interaction: discord.Interaction, count: str):
                 if limit <= 0:
                     await interaction.followup.send("Please provide a positive number of messages to delete.", ephemeral=True)
                     return
-                # Purge a specific number of messages before the original message.
                 deleted = await interaction.channel.purge(limit=limit, before=original_message)
                 await interaction.followup.send(f"Successfully deleted **{len(deleted)}** messages.", ephemeral=True)
             except ValueError:
@@ -693,7 +730,6 @@ async def on_raw_reaction_add(payload):
         if guild is None:
             return
 
-        # Explicitly fetch the member from the API to ensure the object is up-to-date
         try:
             member = await guild.fetch_member(payload.user_id)
         except discord.NotFound:
@@ -715,17 +751,14 @@ async def on_raw_reaction_add(payload):
             if role is not None:
                 if is_toggle:
                     if role in member.roles:
-                        # User has the role, so remove it
                         await member.remove_roles(role)
                         if VERBOSE_LOGGING:
                             print(f"Toggled off role {role.name} for {member.display_name}")
                     else:
-                        # User does not have the role, so add it
                         await member.add_roles(role)
                         if VERBOSE_LOGGING:
                             print(f"Toggled on role {role.name} for {member.display_name}")
                 else:
-                    # Normal reaction role, add the role
                     await member.add_roles(role)
                     if VERBOSE_LOGGING:
                         print(f"Adding role {role.name} to {member.display_name}")
@@ -742,7 +775,6 @@ async def on_raw_reaction_remove(payload):
         if guild is None:
             return
 
-        # Explicitly fetch the member from the API to ensure the object is up-to-date
         try:
             member = await guild.fetch_member(payload.user_id)
         except discord.NotFound:
@@ -758,7 +790,6 @@ async def on_raw_reaction_remove(payload):
             role_data = bot.reaction_roles[str(payload.message_id)][emoji]
             is_toggle = role_data.get("is_toggle", False)
 
-            # --- This is the fix ---
             if is_toggle:
                 role_name = role_data.get("role_name")
                 role = discord.utils.get(guild.roles, name=role_name)
@@ -769,37 +800,48 @@ async def on_raw_reaction_remove(payload):
                     await member.remove_roles(role)
 
 
-# --- New Event Listeners for Logging ---
+# --- Event Listeners for Logging ---
 @bot.listen()
 async def on_voice_state_update(member, before, after):
     """
-    Logs voice channel joins and leaves to the ADMIN_CHANNEL_ID.
+    Logs voice channel joins and leaves.
     """
-    admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
-    if not admin_channel:
+    # Check if a voice channel change occurred.
+    if before.channel == after.channel:
         return
 
-    # User joined a voice channel
-    if before.channel is None and after.channel is not None:
-        await admin_channel.send(f"**{member.display_name}** has entered voice channel {after.channel.mention}")
+    log_message = None
+    if after.channel is not None:
+        log_message = f"{member.display_name} has entered voice channel {after.channel.name}"
+        output_message = f"**{member.display_name}** has entered voice channel {after.channel.mention}"
+    elif before.channel is not None:
+        log_message = f"{member.display_name} has left voice channel {before.channel.name}"
+        output_message = f"**{member.display_name}** has left voice channel {before.channel.mention}"
 
-    # User left a voice channel
-    elif before.channel is not None and after.channel is None:
-        await admin_channel.send(f"**{member.display_name}** has left voice channel {before.channel.mention}")
+    if log_message and bot.config.get('S_LOG', False):
+        _write_to_log_file(bot.s_logs_file_path, log_message)
+
+    if output_message and ADMIN_CHANNEL_ID:
+        admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+        if admin_channel:
+            await admin_channel.send(output_message)
 
 
 @bot.listen()
 async def on_message_delete(message):
     """
-    Logs deleted messages to the ADMIN_CHANNEL_ID.
-    Note: This only works for messages in the bot's cache.
+    Logs deleted messages to the appropriate channel and file.
     """
-    # Don't log bot messages
     if message.author.bot:
         return
-        
-    admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
-    if not admin_channel:
+    
+    # Check if the message was deleted in the admin channel
+    if message.channel.id == ADMIN_CHANNEL_ID and TARGET_USER_ID:
+        log_channel = bot.get_user(TARGET_USER_ID)
+    else:
+        log_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+
+    if not log_channel:
         return
 
     # Find who deleted the message by checking the audit log
@@ -810,7 +852,6 @@ async def on_message_delete(message):
                 deleter = entry.user
                 break
     except discord.Forbidden:
-        # The bot lacks the "View Audit Log" permission
         if VERBOSE_LOGGING:
             print("Bot lacks permissions to view audit log.")
     except Exception as e:
@@ -818,21 +859,58 @@ async def on_message_delete(message):
             print(f"Error fetching audit log: {e}")
 
     # Prepare the log message content
-    if deleter:
-        log_message = f"**Message deleted by {deleter.display_name}**\n"
-    else:
-        log_message = "**A message was deleted**\n"
-    
-    log_message += f"> **Author:** {message.author.mention}\n"
-    log_message += f"> **Channel:** {message.channel.mention}\n"
-    
-    # Check if the message content is available (i.e., it was in the bot's cache)
-    if message.content:
-        log_message += f"> **Content:** {message.content}"
-    else:
-        log_message += "> **Content:** (Content not available, message not in bot's cache)"
+    deleter_name = deleter.display_name if deleter else "Unknown"
+    log_content = message.content or "(Content not available)"
 
-    await admin_channel.send(log_message)
+    file_log_message = f"Message by {message.author.display_name} was deleted by {deleter_name} in channel {message.channel.name}. Content: {log_content}"
+    output_log_message = f"**Message deleted by {deleter_name}**\n" \
+                         f"> **Author:** {message.author.display_name}\n" \
+                         f"> **Channel:** {message.channel.mention}\n" \
+                         f"> **Content:** {log_content}"
+
+    if bot.config.get('S_LOG', False):
+        _write_to_log_file(bot.s_logs_file_path, file_log_message)
+
+    await log_channel.send(output_log_message)
+
+
+@bot.listen()
+async def on_message(message):
+    """
+    Checks for bold words and logs infractions.
+    """
+    if message.author.bot:
+        return
+
+    if not bot.config.get('INF_LOG', False):
+        return
+    
+    if not bot.config.get('BOLD_WORD', []):
+        return
+
+    content_lower = message.content.lower()
+    found_infraction = False
+    for word in bot.config['BOLD_WORD']:
+        if re.search(r'\b' + re.escape(word) + r'\b', content_lower):
+            found_infraction = True
+            break
+    
+    if found_infraction:
+        log_message = f"Infraction by {message.author.display_name} in channel {message.channel.name}. Content: {message.content}"
+        _write_to_log_file(bot.inf_file_path, log_message)
+
+        if ADMIN_CHANNEL_ID:
+            admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+            if admin_channel:
+                infraction_embed = discord.Embed(
+                    title="Infraction Detected",
+                    description=f"A bold word was found in a message.",
+                    color=discord.Color.red()
+                )
+                infraction_embed.add_field(name="Author", value=message.author.mention, inline=False)
+                infraction_embed.add_field(name="Channel", value=message.channel.mention, inline=False)
+                infraction_embed.add_field(name="Content", value=f"```\n{message.content}\n```", inline=False)
+                await admin_channel.send(embed=infraction_embed)
 
 
 if __name__ == "__main__":
