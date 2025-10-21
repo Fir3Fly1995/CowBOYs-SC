@@ -22,10 +22,11 @@ TARGET_USER_ID = 470337413923995675
 
 # --- RSI Verification Setup ---
 # The VARIABLE part of your RSI Org URL. E.g., for '.../orgs/CSSTAR/members', this is 'CSSTAR'.
-# CHANGED from "COWBOYS" to "SPBOYS"
 RSI_ORG_VARIABLE = "SPBOYS" 
 # The name of the role members receive upon successful verification.
 VERIFIED_ROLE_NAME = "Verified" 
+# New role whose members are protected from name spoofing.
+ADMIN_PROTECTED_ROLE_NAME = "The First Cruel Ones"
 # UNVERIFIED_ROLE_NAME removed as per user request. New members start with no roles.
 
 # Verification codes are now stored in memory (self.pending_verifications) and reset on bot restart.
@@ -698,15 +699,61 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
     member = interaction.user
     guild = interaction.guild
     
-    verified_role = discord.utils.get(guild.roles, name=VERIFIED_ROLE_NAME)
-    # UNVERIFIED_ROLE_NAME has been removed.
+    # --- LOGGING SETUP ---
+    admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+    if admin_channel:
+        # Initial log message for every attempt
+        await admin_channel.send(f"🕵️ **Verification Attempt Started** by {member.mention} (Discord ID: `{member.id}`). RSI Name: `{rsi_username}`.")
 
+    # --- ROLE SETUP ---
+    verified_role = discord.utils.get(guild.roles, name=VERIFIED_ROLE_NAME)
+    admin_protected_role = discord.utils.get(guild.roles, name=ADMIN_PROTECTED_ROLE_NAME)
+    
     if not verified_role:
         await interaction.followup.send("Error: The Verified role is misconfigured. Please contact an admin.", ephemeral=True)
         return
 
+    # --- ANTI-SPOOFING PRE-CHECK ---
+    check_name_lower = rsi_username.lower()
+    protected_roles = [r for r in [verified_role, admin_protected_role] if r]
+    
+    if protected_roles:
+        async for guild_member in guild.fetch_members(limit=None):
+            
+            if guild_member.id == member.id:
+                continue
+                
+            is_protected = any(role in guild_member.roles for role in protected_roles)
+            
+            if is_protected:
+                
+                member_name_to_check = guild_member.display_name.lower()
+                member_username_to_check = guild_member.name.lower()
+
+                if member_name_to_check == check_name_lower or member_username_to_check == check_name_lower:
+                    
+                    alert_role = next((role.name for role in protected_roles if role in guild_member.roles), VERIFIED_ROLE_NAME)
+
+                    # Send urgent admin log message
+                    if admin_channel:
+                        await admin_channel.send(
+                            f"🚨 **SECURITY ALERT - SPOOFING BLOCKED!**\n"
+                            f"**Attempted User:** {member.mention}\n"
+                            f"**RSI Name Used:** `{rsi_username}`\n"
+                            f"**Protected User:** {guild_member.mention} (Role: **@{alert_role}**)"
+                        )
+
+                    await interaction.followup.send(
+                        f"❌ **Spoofing Alert!** The RSI handle `{rsi_username}` is already claimed and protected "
+                        f"by a member with the **@{alert_role}** role. Verification aborted.",
+                        ephemeral=True
+                    )
+                    return
+    # --- END ANTI-SPOOFING PRE-CHECK ---
+
     # Helper function to assign roles and nickname
     async def complete_verification():
+        log_status = "SUCCESS"
         try:
             # 1. Assign Roles (only Verified is needed now)
             await member.add_roles(verified_role)
@@ -728,12 +775,17 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
                  print(f"Verification successful for {member.display_name}. RSI: {rsi_username}")
 
         except discord.Forbidden:
+            log_status = "ERROR (Forbidden Role/Nick)"
             await interaction.followup.send(
                 "Verification succeeded, but I failed to update your role or nickname due to permission issues. Please contact an anmin.",
                 ephemeral=True
             )
         except Exception as e:
+            log_status = f"ERROR ({type(e).__name__})"
             await interaction.followup.send(f"An unexpected error occurred during role assignment: {e}", ephemeral=True)
+
+        if admin_channel:
+            await admin_channel.send(f"✅ **Verification Complete:** {member.mention} ({rsi_username}). **Status:** {log_status}.")
 
 
     # --- Step 1: Check Org Member List (Primary Check) ---
@@ -778,6 +830,11 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
         time_elapsed = datetime.datetime.now() - timestamp
         if time_elapsed > ONE_HOUR:
             del bot.pending_verifications[user_id_str]
+            
+            # Admin Log: Code Expired
+            if admin_channel:
+                await admin_channel.send(f"⚠️ **Verification Failed:** {member.mention} ({rsi_username}). **Status:** Code expired.")
+
             await interaction.followup.send(
                 f"❌ Verification code for `{rsi_username}` has **expired** (>{ONE_HOUR} old).\n"
                 f"Please run `/verify {rsi_username}` again to generate a new code.",
@@ -803,10 +860,12 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
             else:
                 # Code not found yet
                 time_remaining = ONE_HOUR - time_elapsed
-                
-                # Format the time remaining nicely
                 minutes_remaining = int(time_remaining.total_seconds() // 60)
                 
+                # Admin Log: Bio Code Not Found
+                if admin_channel:
+                    await admin_channel.send(f"🔄 **Verification Retried:** {member.mention} ({rsi_username}). **Status:** Bio code not yet found (Code: `{code}`).")
+
                 await interaction.followup.send(
                     f"❌ Verification failed for `{rsi_username}`.\n"
                     f"I did not find the active code **`{code}`** in your public RSI Bio at {citizen_url}.\n"
@@ -815,6 +874,10 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
                 return
                 
         except requests.RequestException as e:
+            # Admin Log: Request Error
+            if admin_channel:
+                await admin_channel.send(f"❌ **Verification Failed:** {member.mention} ({rsi_username}). **Status:** RSI profile access error.")
+
             await interaction.followup.send(
                 f"❌ Verification failed: Could not access the public RSI profile page for `{rsi_username}` ({citizen_url}). "
                 f"Please ensure the username is correct and the profile is public."
@@ -826,6 +889,10 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
         new_code = generate_verification_code()
         # Store the new code with its creation time
         bot.pending_verifications[user_id_str] = (new_code, datetime.datetime.now())
+        
+        # Admin Log: New Code Issued
+        if admin_channel:
+            await admin_channel.send(f"➡️ **Verification Fallback:** {member.mention} ({rsi_username}). **Status:** Issued new bio code: `{new_code}`.")
         
         await interaction.followup.send(
             f"⚠️ **Org/Direct lookup failed.**\n"
