@@ -729,7 +729,7 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
 
         except discord.Forbidden:
             await interaction.followup.send(
-                "Verification succeeded, but I failed to update your role or nickname due to permission issues. Please contact an admin.",
+                "Verification succeeded, but I failed to update your role or nickname due to permission issues. Please contact an anmin.",
                 ephemeral=True
             )
         except Exception as e:
@@ -743,8 +743,9 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
         org_response = requests.get(org_url, timeout=10)
         org_response.raise_for_status()
         
-        # Searching for the username inside an anchor tag is a rough but common scraping method
-        if f'>{rsi_username}</a>' in org_response.text:
+        # --- FIX: Making the Org check case-insensitive ---
+        search_term = f'>{rsi_username}</a>'.lower()
+        if search_term in org_response.text.lower():
             await interaction.followup.send(
                 f"**Verification Success (Org Check)!** Found `{rsi_username}` in the **{RSI_ORG_VARIABLE}** member list.", 
                 ephemeral=True
@@ -788,7 +789,7 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
             citizen_response = requests.get(citizen_url, timeout=10)
             citizen_response.raise_for_status()
             
-            # Check for the code in the HTML response text
+            # Check for the code in the HTML response text (This MUST remain case-sensitive for the code)
             if code in citizen_response.text:
                 # Verification succeeded via Bio Code!
                 del bot.pending_verifications[user_id_str]
