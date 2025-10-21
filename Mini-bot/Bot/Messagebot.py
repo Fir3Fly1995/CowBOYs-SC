@@ -835,8 +835,7 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
             f"1. Go to your **Account Profile** page to edit your bio: **{account_url}**\n" # Updated URL
             f"2. Paste the code **`{new_code}`** into your **Short Bio** (Dossier).\n"
             f"3. Come back to Discord and run `/verify {rsi_username}` again. "
-            f"The code will expire in **1 hour**."
-            f"\n\n*(Note: This code is only stored in memory and will be lost if the bot restarts.)*",
+            f"The code will expire in **1 hour**.",
             ephemeral=True
         )
 
