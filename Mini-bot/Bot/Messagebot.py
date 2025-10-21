@@ -22,6 +22,7 @@ TARGET_USER_ID = 470337413923995675
 
 # --- RSI Verification Setup ---
 # The VARIABLE part of your RSI Org URL. E.g., for '.../orgs/CSSTAR/members', this is 'CSSTAR'.
+# CHANGED from "COWBOYS" to "SPBOYS"
 RSI_ORG_VARIABLE = "SPBOYS" 
 # The name of the role members receive upon successful verification.
 VERIFIED_ROLE_NAME = "Verified" 
@@ -753,12 +754,16 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
             return
             
     except requests.RequestException as e:
-        print(f"Error checking Org URL {org_url}: {e}")
+        # Log the failure for debugging, and provide context about the scraping method
+        print(f"Org Check Failure (Expected): The basic Org member list scrape failed for {org_url}. This is common with dynamic RSI pages. Proceeding to Bio Check. Error: {e}")
         # Continue to the Bio check on error/failure
 
     # --- Step 2: Check Bio Code (Secondary Check/Fallback) ---
     user_id_str = str(member.id)
+    # URL for public viewing/scraping the bio
     citizen_url = f"https://www.robertsspaceindustries.com/citizens/{rsi_username}"
+    # URL for user instruction to edit the bio (The corrected URL)
+    account_url = "https://www.robertsspaceindustries.com/account/profile"
     
     # 1 hour expiration window
     ONE_HOUR = datetime.timedelta(hours=1) 
@@ -796,16 +801,20 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
             else:
                 # Code not found yet
                 time_remaining = ONE_HOUR - time_elapsed
+                
+                # Format the time remaining nicely
+                minutes_remaining = int(time_remaining.total_seconds() // 60)
+                
                 await interaction.followup.send(
                     f"❌ Verification failed for `{rsi_username}`.\n"
-                    f"I did not find the active code **`{code}`** in your RSI Bio at {citizen_url}.\n"
-                    f"Please ensure it is correctly placed and try the command again. The code expires in: **{time_remaining}**"
+                    f"I did not find the active code **`{code}`** in your public RSI Bio at {citizen_url}.\n"
+                    f"Please ensure it is correctly placed and try the command again. The code expires in: **{minutes_remaining} minutes**."
                 )
                 return
                 
         except requests.RequestException as e:
             await interaction.followup.send(
-                f"❌ Verification failed: Could not access the RSI profile page for `{rsi_username}` ({citizen_url}). "
+                f"❌ Verification failed: Could not access the public RSI profile page for `{rsi_username}` ({citizen_url}). "
                 f"Please ensure the username is correct and the profile is public."
             )
             return
@@ -817,11 +826,11 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
         bot.pending_verifications[user_id_str] = (new_code, datetime.datetime.now())
         
         await interaction.followup.send(
-            f"⚠️ **Org/Direct lookup failed or your profile is redacted.**\n"
+            f"⚠️ **Org/Direct lookup failed.**\n"
             f"We need to verify you using your RSI Bio. Your unique verification code is:\n"
             f"**`{new_code}`**\n\n"
             f"**Steps to complete verification:**\n"
-            f"1. Go to your RSI profile: **{citizen_url}**\n"
+            f"1. Go to your **Account Profile** page to edit your bio: **{account_url}**\n" # Updated URL
             f"2. Paste the code **`{new_code}`** into your **Short Bio** (Dossier).\n"
             f"3. Come back to Discord and run `/verify {rsi_username}` again. "
             f"The code will expire in **1 hour**."
