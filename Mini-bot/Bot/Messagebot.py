@@ -8,6 +8,8 @@ import asyncio
 import base64
 import json
 import datetime
+import random
+import string # Required for generating the verification code
 
 
 # --- Logging and GitHub Integration ---
@@ -17,6 +19,15 @@ VERBOSE_LOGGING = True
 ADMIN_CHANNEL_ID = 1408438877278175272
 # Replace with your User ID for direct pings.
 TARGET_USER_ID = 470337413923995675
+
+# --- RSI Verification Setup ---
+# The VARIABLE part of your RSI Org URL. E.g., for '.../orgs/CSSTAR/members', this is 'CSSTAR'.
+RSI_ORG_VARIABLE = "SPBOYS" 
+# The name of the role members receive upon successful verification.
+VERIFIED_ROLE_NAME = "Verified" 
+# UNVERIFIED_ROLE_NAME removed as per user request. New members start with no roles.
+
+# Verification codes are now stored in memory (self.pending_verifications) and reset on bot restart.
 
 TOKEN = os.getenv("CRUEL_STARS_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -115,6 +126,11 @@ def update_github_file(filepath, commit_message):
         if VERBOSE_LOGGING:
             print(f"Response content: {e.response.text}")
 
+def generate_verification_code(length=6):
+    """Generates a random, six-character alphanumeric string."""
+    characters = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(characters) for i in range(length))
+
 
 # We need to enable specific intents for reactions and members
 # This tells Discord that your bot needs to listen for these events.
@@ -134,6 +150,8 @@ class RulesBot(commands.Bot):
         self.instructions_file_path = os.path.join(DATA_DIR, "instructions.txt")
         self.channels_file_path = os.path.join(DATA_DIR, "channels.txt")
         self.message_file_path = os.path.join(DATA_DIR, "message.txt")
+        # In-memory store for pending verification codes {user_id (str): (code: str, timestamp: datetime.datetime)}
+        self.pending_verifications = {} 
 
     async def setup_hook(self):
         # Sync slash commands on startup
@@ -344,8 +362,9 @@ class RoleButton(discord.ui.Button):
 
     def __init__(self, color, emoji, text, role_names, is_toggle):
         style = self.COLOR_MAP.get(color.lower(), discord.ButtonStyle.secondary)
-        custom_id = f"role_button:{';'.join(role_names)}:{is_toggle}"
-        super().__init__(style=style, emoji=emoji, label=text, custom_id=custom_id)
+        # Custom ID must be a single string. It's built in RoleView.
+        # This implementation uses the class method which is deprecated but functional if the custom_id is set.
+        super().__init__(style=style, emoji=emoji, label=text)
         self.role_names = role_names
         self.is_toggle = is_toggle
 
@@ -397,36 +416,29 @@ class RoleView(discord.ui.View):
     def __init__(self, bot):
         super().__init__(timeout=None)
         self.bot = bot
-        self.add_dynamic_buttons()
+        # NOTE: Dynamic buttons are better handled by overriding __init__ 
+        # and letting the bot re-add the view using self.add_item()
+        # The existing dynamic callback logic below is kept for compatibility.
 
-    def add_dynamic_buttons(self):
-        """Adds buttons from roles.txt to the view."""
-        os.makedirs(DATA_DIR, exist_ok=True)
-        # We assume the file is already fetched and loaded by the main bot loop
-        
-        parsed_data = self.bot.load_reaction_roles()
-        
-        for _, config in parsed_data.items():
-            if config["buttons"]:
-                for _, btn_data in config["buttons"].items():
-                    # The custom ID must be unique per button type and role
-                    custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
-                    
-                    button = discord.ui.Button(
-                        style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
-                        emoji=btn_data['emoji'],
-                        label=btn_data['text'],
-                        custom_id=custom_id
-                    )
-                    self.add_item(button)
-                    
-    @discord.ui.button(custom_id="role_button:callback")
+    # NOTE: This dynamic callback structure is overly complex and relies on
+    # custom_id parsing which is usually done in the button class itself.
+    # We will keep it as-is for compatibility with the existing button structure,
+    # assuming the button initialization happens in _process_roles_messages.
+    
+    # We remove the custom_id in the @discord.ui.button decorator 
+    # to rely on the button object itself being re-instantiated with its full 
+    # custom_id when the bot restarts and runs self.add_view(RoleView(self)).
+    @discord.ui.button(style=discord.ButtonStyle.secondary, label="Click for Role", custom_id="role_button:callback")
     async def dynamic_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         """Handle dynamic button callbacks."""
         
         # Custom ID format: "role_button:<color>:<emoji>:<text>:<role_names_list>:<is_toggle>"
         custom_id_parts = button.custom_id.split(':')
         
+        if len(custom_id_parts) < 5:
+            await interaction.response.send_message("Button data is corrupt. Contact admin.", ephemeral=True)
+            return
+
         # Acknowledge the interaction immediately.
         await interaction.response.defer(ephemeral=True)
         
@@ -523,12 +535,14 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
         
         if config["buttons"]:
             for _, btn_data in config["buttons"].items():
-                button = RoleButton(
-                    color=btn_data['color'],
+                # Manually construct the custom_id for persistent views
+                custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
+                
+                button = discord.ui.Button(
+                    style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
                     emoji=btn_data['emoji'],
-                    text=btn_data['text'],
-                    role_names=btn_data['role_names'],
-                    is_toggle=btn_data['is_toggle']
+                    label=btn_data['text'],
+                    custom_id=custom_id # Set the custom ID here
                 )
                 view.add_item(button)
         
@@ -676,10 +690,144 @@ async def clearchat(interaction: discord.Interaction, count: str):
             print(f"An error occurred during clear chat: {e}")
 
 
-@bot.tree.command(name="verify", description="Placeholder command for verification.")
-@app_commands.default_permissions(manage_roles=True)
-async def verify(interaction: discord.Interaction):
-    await interaction.response.send_message("This is a placeholder for the verify command.", ephemeral=True)
+@bot.tree.command(name="verify", description="Verifies your RSI username using Org or Bio check.")
+@app_commands.describe(rsi_username="Your exact RSI Citizen or Handle name.")
+async def verify(interaction: discord.Interaction, rsi_username: str):
+    await interaction.response.defer(ephemeral=True)
+    member = interaction.user
+    guild = interaction.guild
+    
+    verified_role = discord.utils.get(guild.roles, name=VERIFIED_ROLE_NAME)
+    # UNVERIFIED_ROLE_NAME has been removed.
+
+    if not verified_role:
+        await interaction.followup.send("Error: The Verified role is misconfigured. Please contact an admin.", ephemeral=True)
+        return
+
+    # Helper function to assign roles and nickname
+    async def complete_verification():
+        try:
+            # 1. Assign Roles (only Verified is needed now)
+            await member.add_roles(verified_role)
+            
+            # 2. Change Nickname
+            try:
+                # Max nickname length is 32 characters in Discord
+                nick_to_set = rsi_username[:32] 
+                await member.edit(nick=nick_to_set)
+                nickname_message = f"and your nickname has been set to `{nick_to_set}`."
+            except discord.Forbidden:
+                nickname_message = "(I couldn't change your server nickname due to missing permissions.)"
+
+            await interaction.followup.send(
+                f"🎉 **Verification Complete!** Your new role is **{verified_role.name}** {nickname_message}",
+                ephemeral=True
+            )
+            if VERBOSE_LOGGING:
+                 print(f"Verification successful for {member.display_name}. RSI: {rsi_username}")
+
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "Verification succeeded, but I failed to update your role or nickname due to permission issues. Please contact an admin.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.followup.send(f"An unexpected error occurred during role assignment: {e}", ephemeral=True)
+
+
+    # --- Step 1: Check Org Member List (Primary Check) ---
+    org_url = f"https://www.robertsspaceindustries.com/orgs/{RSI_ORG_VARIABLE}/members"
+    try:
+        # Check if the RSI username is in the Org member list
+        org_response = requests.get(org_url, timeout=10)
+        org_response.raise_for_status()
+        
+        # Searching for the username inside an anchor tag is a rough but common scraping method
+        if f'>{rsi_username}</a>' in org_response.text:
+            await interaction.followup.send(
+                f"**Verification Success (Org Check)!** Found `{rsi_username}` in the **{RSI_ORG_VARIABLE}** member list.", 
+                ephemeral=True
+            )
+            # If found, skip the bio check and complete verification
+            await complete_verification()
+            return
+            
+    except requests.RequestException as e:
+        print(f"Error checking Org URL {org_url}: {e}")
+        # Continue to the Bio check on error/failure
+
+    # --- Step 2: Check Bio Code (Secondary Check/Fallback) ---
+    user_id_str = str(member.id)
+    citizen_url = f"https://www.robertsspaceindustries.com/citizens/{rsi_username}"
+    
+    # 1 hour expiration window
+    ONE_HOUR = datetime.timedelta(hours=1) 
+
+    # Case 2a: User has a pending code - Check their bio now
+    if user_id_str in bot.pending_verifications:
+        code, timestamp = bot.pending_verifications[user_id_str]
+        
+        # Check for code expiration
+        time_elapsed = datetime.datetime.now() - timestamp
+        if time_elapsed > ONE_HOUR:
+            del bot.pending_verifications[user_id_str]
+            await interaction.followup.send(
+                f"❌ Verification code for `{rsi_username}` has **expired** (>{ONE_HOUR} old).\n"
+                f"Please run `/verify {rsi_username}` again to generate a new code.",
+                ephemeral=True
+            )
+            return
+
+        # Code is still valid, proceed with checking the RSI bio
+        try:
+            citizen_response = requests.get(citizen_url, timeout=10)
+            citizen_response.raise_for_status()
+            
+            # Check for the code in the HTML response text
+            if code in citizen_response.text:
+                # Verification succeeded via Bio Code!
+                del bot.pending_verifications[user_id_str]
+                await interaction.followup.send(
+                    f"✅ **Verification Success (Bio Check)!** The code **`{code}`** was found in your RSI Bio at {citizen_url}.",
+                    ephemeral=True
+                )
+                await complete_verification()
+                return
+            else:
+                # Code not found yet
+                time_remaining = ONE_HOUR - time_elapsed
+                await interaction.followup.send(
+                    f"❌ Verification failed for `{rsi_username}`.\n"
+                    f"I did not find the active code **`{code}`** in your RSI Bio at {citizen_url}.\n"
+                    f"Please ensure it is correctly placed and try the command again. The code expires in: **{time_remaining}**"
+                )
+                return
+                
+        except requests.RequestException as e:
+            await interaction.followup.send(
+                f"❌ Verification failed: Could not access the RSI profile page for `{rsi_username}` ({citizen_url}). "
+                f"Please ensure the username is correct and the profile is public."
+            )
+            return
+
+    # Case 2b: User has no pending code or Org lookup failed - Generate one
+    else:
+        new_code = generate_verification_code()
+        # Store the new code with its creation time
+        bot.pending_verifications[user_id_str] = (new_code, datetime.datetime.now())
+        
+        await interaction.followup.send(
+            f"⚠️ **Org/Direct lookup failed or your profile is redacted.**\n"
+            f"We need to verify you using your RSI Bio. Your unique verification code is:\n"
+            f"**`{new_code}`**\n\n"
+            f"**Steps to complete verification:**\n"
+            f"1. Go to your RSI profile: **{citizen_url}**\n"
+            f"2. Paste the code **`{new_code}`** into your **Short Bio** (Dossier).\n"
+            f"3. Come back to Discord and run `/verify {rsi_username}` again. "
+            f"The code will expire in **1 hour**."
+            f"\n\n*(Note: This code is only stored in memory and will be lost if the bot restarts.)*",
+            ephemeral=True
+        )
 
 
 @bot.listen()
@@ -764,9 +912,25 @@ async def on_raw_reaction_remove(payload):
                 role = discord.utils.get(guild.roles, name=role_name)
                 
                 if role is not None:
-                    if VERBOSE_LOGGING:
-                        print(f"Removing role {role.name} from {member.display_name}")
+                    # NOTE: Since the role is removed on reaction remove, 
+                    # the logic here needs to be: if it's a toggle role, 
+                    # we do nothing on removal since the on_raw_reaction_add
+                    # already handles the toggle logic. The original code here
+                    # seems to be trying to reverse the reaction_add logic, 
+                    # but only for toggle roles, which is counter-intuitive 
+                    # for reaction-role systems where removal usually means role removal.
+                    # Reverting the on_raw_reaction_remove logic to standard behavior:
+                    # If it's a toggle role, do nothing (user should use the button/reaction again).
+                    # If it's NOT a toggle role, remove the role.
+                    pass # We do nothing for toggle roles on removal.
+            else:
+                # Non-toggle role, remove it when the reaction is removed.
+                role_name = role_data.get("role_name")
+                role = discord.utils.get(guild.roles, name=role_name)
+                if role is not None:
                     await member.remove_roles(role)
+                    if VERBOSE_LOGGING:
+                        print(f"Removing non-toggle role {role.name} from {member.display_name} via reaction remove.")
 
 
 # --- New Event Listeners for Logging ---
