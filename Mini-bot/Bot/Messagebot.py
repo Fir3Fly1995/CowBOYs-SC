@@ -66,7 +66,7 @@ def get_file_sha(filepath):
 
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.com"
     }
     api_url = f"{REPO_API_URL}{os.path.basename(filepath)}"
     
@@ -107,7 +107,7 @@ def update_github_file(filepath, commit_message):
 
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.com"
     }
 
     payload = {
@@ -743,8 +743,9 @@ async def verify(interaction: discord.Interaction, rsi_username: str):
         org_response = requests.get(org_url, timeout=10)
         org_response.raise_for_status()
         
-        # --- FIX: Making the Org check case-insensitive ---
-        search_term = f'>{rsi_username}</a>'.lower()
+        # --- FIX: Targeting the specific '/citizens/username' href link, case-insensitive ---
+        # The expected link structure is '/citizens/{username}' (as found via inspect element)
+        search_term = f'/citizens/{rsi_username}'.lower() 
         if search_term in org_response.text.lower():
             await interaction.followup.send(
                 f"**Verification Success (Org Check)!** Found `{rsi_username}` in the **{RSI_ORG_VARIABLE}** member list.", 
