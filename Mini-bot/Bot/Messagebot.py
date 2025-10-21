@@ -27,7 +27,6 @@ RSI_ORG_VARIABLE = "SPBOYS"
 VERIFIED_ROLE_NAME = "Verified" 
 # New role whose members are protected from name spoofing.
 ADMIN_PROTECTED_ROLE_NAME = "The First Cruel Ones"
-# UNVERIFIED_ROLE_NAME removed as per user request. New members start with no roles.
 
 # Verification codes are now stored in memory (self.pending_verifications) and reset on bot restart.
 
