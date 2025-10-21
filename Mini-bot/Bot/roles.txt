@@ -14,7 +14,6 @@ MSG;
 
 Hit the button below to mark your agreement & gain access to the rest of the server.
 you can now become verified. type /verify and your RSI username to verify. Express verification is available if you join our org. You can do this in any text channel.
-Invite your friends along! Copy the link: "https://discord.com/invite/rfSpAbeMxS"
 MK-BTN_1; Colour=green; Emoji=✅; Text="Accept"
 Give_Role_1; "Rules Accepted"
 Give_Role_1; "Visitor"
