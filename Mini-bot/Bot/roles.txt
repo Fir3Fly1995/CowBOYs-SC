@@ -19,10 +19,9 @@ Give_Role_1; "Rules Accepted"
 Give_Role_1; "Visitor"
 End.
 
-Skip.
+Start.
 Toggle-Role
 CH-ID<#1408384836003037344>
-MSG-ID:1417106087412502548
 MSG;
 <@&1405914853000089600> - Everyone starts here. This is the starter role to allow you to hang out with us and for us to see if you can participate in some of our events.
 <@&1405772499983011850> - You wish to join us and become a full time CowBOY. Treat it as an apprenticeship. We all need to know each other and see if our vibes match. You have access to events and content will be less limited.
