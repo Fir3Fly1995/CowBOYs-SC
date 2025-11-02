@@ -468,61 +468,73 @@ class RoleView(discord.ui.View):
     async def dynamic_callback(self, interaction: discord.Interaction):
         """Handle dynamic button callbacks."""
         
-        # Custom ID format: "COLOR:EMOJI:TEXT:ROLE_NAMES_LIST:IS_TOGGLE"
-        custom_id_parts = interaction.data['custom_id'].split(':')
-        
-        if len(custom_id_parts) < 5:
-            await interaction.response.send_message("Button data is corrupt. Contact admin.", ephemeral=True)
-            return
-
         # Acknowledge the interaction immediately.
         await interaction.response.defer(ephemeral=True)
         
-        guild = interaction.guild
-        member = interaction.user
-
-        # Extract data from the custom_id
-        role_names_str = custom_id_parts[3]
-        is_toggle = custom_id_parts[4].lower() == 'true'
-        role_names = role_names_str.split(';')
-        
-        roles_to_add = [discord.utils.get(guild.roles, name=role_name) for role_name in role_names]
-        roles_to_add = [role for role in roles_to_add if role is not None]
-
-        if not roles_to_add:
-            await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
-            return
+        try:
+            # Custom ID format: "COLOR:EMOJI:TEXT:ROLE_NAMES_LIST:IS_TOGGLE"
+            custom_id_parts = interaction.data['custom_id'].split(':')
             
-        if is_toggle:
-            for role in roles_to_add:
-                if role in member.roles:
-                    await member.remove_roles(role)
-                else:
-                    await member.add_roles(role)
-            await interaction.followup.send(
-                f"Roles updated: {', '.join([role.name for role in roles_to_add])}", ephemeral=True
-            )
-        else:
-            added_roles = []
-            for role in roles_to_add:
-                if role not in member.roles:
-                    await member.add_roles(role)
-                    added_roles.append(role.name)
+            if len(custom_id_parts) < 5:
+                await interaction.followup.send("Button data is corrupt (too few parts). Contact admin.", ephemeral=True)
+                return
 
-            # Check if the "Rules Accepted" role was among the added roles
-            if "Rules Accepted" in added_roles:
+            guild = interaction.guild
+            member = interaction.user
+
+            # Extract data from the custom_id
+            role_names_str = custom_id_parts[3]
+            is_toggle = custom_id_parts[4].lower() == 'true'
+            role_names = role_names_str.split(';')
+            
+            roles_to_add = [discord.utils.get(guild.roles, name=role_name) for role_name in role_names]
+            roles_to_add = [role for role in roles_to_add if role is not None]
+
+            if not roles_to_add:
+                await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
+                return
+                
+            if is_toggle:
+                for role in roles_to_add:
+                    if role in member.roles:
+                        await member.remove_roles(role)
+                    else:
+                        await member.add_roles(role)
                 await interaction.followup.send(
-                    "Thanks for accepting the rules. Please go to channel <#1404524826978287816> and say hi! :) ", 
-                    ephemeral=True
-                )
-            elif added_roles:
-                await interaction.followup.send(
-                    f"You have been given the roles: {', '.join(added_roles)}", ephemeral=True
+                    f"Roles updated: {', '.join([role.name for role in roles_to_add])}", ephemeral=True
                 )
             else:
-                await interaction.followup.send(
-                    "You already have all the roles.", ephemeral=True
-                )
+                added_roles = []
+                for role in roles_to_add:
+                    if role not in member.roles:
+                        await member.add_roles(role)
+                        added_roles.append(role.name)
+
+                # Check if the "Rules Accepted" role was among the added roles
+                if "Rules Accepted" in added_roles:
+                    await interaction.followup.send(
+                        "Thanks for accepting the rules. Please go to channel <#1404524826978287816> and say hi! :) ", 
+                        ephemeral=True
+                    )
+                elif added_roles:
+                    await interaction.followup.send(
+                        f"You have been given the roles: {', '.join(added_roles)}", ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send(
+                        "You already have all the roles.", ephemeral=True
+                    )
+        
+        except Exception as e:
+            error_msg = f"An error occurred during button callback: {e} | Custom ID: {interaction.data['custom_id']}"
+            print(error_msg)
+            
+            admin_channel = self.bot.get_channel(ADMIN_CHANNEL_ID)
+            if admin_channel:
+                await admin_channel.send(f"⚠️ **Button Error:** {interaction.user.mention} clicked a button resulting in an error. Details: `{error_msg}`")
+                
+            # Send a generic error to the user
+            await interaction.followup.send("An unexpected error occurred processing your request. Admins have been notified.", ephemeral=True)
 
 async def _process_roles_messages(bot_instance, interaction: discord.Interaction = None, is_ephemeral: bool = False):
     """
