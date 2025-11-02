@@ -158,8 +158,7 @@ class RulesBot(commands.Bot):
         # Sync slash commands on startup
         await self.tree.sync()
         print(f'{self.user} has connected to Discord!')
-        # We now add our persistent view back to the bot on setup
-        self.add_view(RoleView(self))
+        # Don't add a global view - each message will have its own view
 
     async def on_ready(self):
         """
@@ -167,6 +166,9 @@ class RulesBot(commands.Bot):
         """
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
+
+        # Add persistent views for existing messages
+        await self.add_persistent_views()
 
         # Send a direct ping to the target user when the bot comes online.
         try:
@@ -179,6 +181,18 @@ class RulesBot(commands.Bot):
             await _process_roles_messages(self, None, True)
         except Exception as e:
             print(f"Error running silent role message update: {e}")
+
+    async def add_persistent_views(self):
+        """Add persistent views for existing messages on startup."""
+        try:
+            parsed_data = self.load_reaction_roles()
+            for channel_id, config in parsed_data.items():
+                if config["message_id"] and config["buttons"]:
+                    # Create a view with the specific buttons for this message
+                    view = PersistentRoleView(self, config["buttons"])
+                    self.add_view(view, message_id=config["message_id"])
+        except Exception as e:
+            print(f"Error adding persistent views: {e}")
 
     def load_reaction_roles(self):
         """
@@ -539,6 +553,101 @@ class RoleView(discord.ui.View):
             # Send a generic error to the user
             await interaction.followup.send("An unexpected error occurred processing your request. Admins have been notified.", ephemeral=True)
 
+class PersistentRoleView(discord.ui.View):
+    def __init__(self, bot, button_configs):
+        super().__init__(timeout=None)
+        self.bot = bot
+        
+        # Add buttons based on the specific config for this message
+        for _, btn_data in button_configs.items():
+            custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
+            
+            button = discord.ui.Button(
+                style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
+                emoji=btn_data['emoji'],
+                label=btn_data['text'],
+                custom_id=custom_id
+            )
+            
+            # Create a proper callback that captures the interaction
+            async def button_callback(interaction: discord.Interaction, btn=button):
+                await self.dynamic_callback(interaction)
+            
+            button.callback = button_callback
+            self.add_item(button)
+
+    async def dynamic_callback(self, interaction: discord.Interaction):
+        """Handle dynamic button callbacks."""
+        
+        # Acknowledge the interaction immediately.
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Custom ID format: "COLOR:EMOJI:TEXT:ROLE_NAMES_LIST:IS_TOGGLE"
+            custom_id_parts = interaction.data['custom_id'].split(':')
+            
+            if len(custom_id_parts) < 5:
+                await interaction.followup.send("Button data is corrupt (too few parts). Contact admin.", ephemeral=True)
+                return
+
+            guild = interaction.guild
+            member = interaction.user
+
+            # Extract data from the custom_id
+            role_names_str = custom_id_parts[3]
+            is_toggle = custom_id_parts[4].lower() == 'true'
+            role_names = role_names_str.split(';')
+            
+            roles_to_add = [discord.utils.get(guild.roles, name=role_name) for role_name in role_names]
+            roles_to_add = [role for role in roles_to_add if role is not None]
+
+            if not roles_to_add:
+                await interaction.followup.send("One or more roles not found. Please contact an admin.", ephemeral=True)
+                return
+                
+            if is_toggle:
+                for role in roles_to_add:
+                    if role in member.roles:
+                        await member.remove_roles(role)
+                    else:
+                        await member.add_roles(role)
+                await interaction.followup.send(
+                    f"Roles updated: {', '.join([role.name for role in roles_to_add])}", ephemeral=True
+                )
+            else:
+                added_roles = []
+                for role in roles_to_add:
+                    if role not in member.roles:
+                        await member.add_roles(role)
+                        added_roles.append(role.name)
+
+                # Check if the "Rules Accepted" role was among the added roles
+                if "Rules Accepted" in added_roles:
+                    await interaction.followup.send(
+                        "Thanks for accepting the rules. Please go to channel <#1404524826978287816> and say hi! :) ", 
+                        ephemeral=True
+                    )
+                elif added_roles:
+                    await interaction.followup.send(
+                        f"You have been given the roles: {', '.join(added_roles)}", ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send(
+                        "You already have all the roles.", ephemeral=True
+                    )
+        
+        except Exception as e:
+            error_msg = f"An error occurred during button callback: {e} | Custom ID: {interaction.data['custom_id']}"
+            print(error_msg)
+            
+            admin_channel = self.bot.get_channel(ADMIN_CHANNEL_ID)
+            if admin_channel:
+                await admin_channel.send(f"⚠️ **Button Error:** {interaction.user.mention} clicked a button resulting in an error. Details: `{error_msg}`")
+                
+            # Send a generic error to the user
+            await interaction.followup.send("An unexpected error occurred processing your request. Admins have been notified.", ephemeral=True)
+
+
 async def _process_roles_messages(bot_instance, interaction: discord.Interaction = None, is_ephemeral: bool = False):
     """
     Core logic for creating/updating roles messages.
@@ -582,27 +691,11 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                 continue
         
         # Case 2: Create or update the message
-        view = RoleView(bot_instance)  # Use the bot's persistent view
-        
+        view = None
         if config["buttons"]:
-            # Clear existing items and add new ones
-            view.clear_items()
-            for _, btn_data in config["buttons"].items():
-                # Manually construct the custom_id for persistent views
-                custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
-                
-                button = discord.ui.Button(
-                    style=RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
-                    emoji=btn_data['emoji'],
-                    label=btn_data['text'],
-                    custom_id=custom_id # Set the custom ID here
-                )
-                # Bind the callback properly
-                async def button_callback(interaction: discord.Interaction, btn=button):
-                    await view.dynamic_callback(interaction)
-                
-                button.callback = button_callback
-                view.add_item(button)
+            view = PersistentRoleView(bot_instance, config["buttons"])
+        else:
+            view = discord.ui.View(timeout=None)  # Empty view for messages without buttons
         
         if message_to_update:
             # We found an existing message, so we'll update it.
