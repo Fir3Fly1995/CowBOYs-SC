@@ -159,7 +159,6 @@ class RulesBot(commands.Bot):
         await self.tree.sync()
         print(f'{self.user} has connected to Discord!')
         # We now add our persistent view back to the bot on setup
-        # The RoleView constructor now handles button reconstruction.
         self.add_view(RoleView(self))
 
     async def on_ready(self):
@@ -280,19 +279,24 @@ class RulesBot(commands.Bot):
         # This function fetches configs to reconstruct the persistent view on startup
         parsed_data = self.load_reaction_roles()
         all_buttons = []
+        # Use a map to store unique custom_ids to prevent duplicates
+        unique_buttons = {} 
+        
         for _, config in parsed_data.items():
             if config["buttons"]:
                 for _, btn_data in config["buttons"].items():
                     # Construct the unique custom_id exactly as done in _process_roles_messages
                     custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
                     
-                    all_buttons.append({
-                        "style": RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
-                        "emoji": btn_data['emoji'],
-                        "label": btn_data['text'],
-                        "custom_id": custom_id,
-                    })
-        return all_buttons
+                    if custom_id not in unique_buttons:
+                        unique_buttons[custom_id] = {
+                            "style": RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
+                            "emoji": btn_data['emoji'],
+                            "label": btn_data['text'],
+                            "custom_id": custom_id,
+                        }
+
+        return list(unique_buttons.values())
 
 
     def _mark_block_as_skipped(self, channel_id, message_id):
@@ -456,19 +460,14 @@ class RoleView(discord.ui.View):
                 label=btn_config['label'],
                 custom_id=btn_config['custom_id']
             )
-            # Add a dynamic callback function to the reconstructed button
+            # FIX: Explicitly bind the dynamic_callback to the reconstructed button
             button.callback = self.dynamic_callback 
             self.add_item(button)
-
-
-    # NOTE: The @discord.ui.button decorator is REMOVED so this method can serve as the
-    # universal callback for all dynamically added buttons.
+            
+    # REMOVED: @discord.ui.button decorator so this method can serve as the universal callback
     async def dynamic_callback(self, interaction: discord.Interaction):
         """Handle dynamic button callbacks."""
         
-        # Get the button object that was clicked
-        button = interaction.data.get('custom_id') 
-
         # Custom ID format: "COLOR:EMOJI:TEXT:ROLE_NAMES_LIST:IS_TOGGLE"
         custom_id_parts = interaction.data['custom_id'].split(':')
         
@@ -581,14 +580,6 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                     label=btn_data['text'],
                     custom_id=custom_id # Set the custom ID here
                 )
-                
-                # Assign the universal dynamic_callback to the button
-                # NOTE: When running outside a persistent view context, this is required.
-                # However, since the final message uses a View that is *not* persistent (it's new),
-                # we rely on the custom_id for persistence. The dynamic_callback logic in the View 
-                # constructor should manage the callback on restart. We don't need to explicitly set 
-                # button.callback here if the logic is handled by the overall view structure.
-                
                 view.add_item(button)
         
         if message_to_update:
