@@ -176,21 +176,47 @@ class RulesBot(commands.Bot):
         except Exception as e:
             print(f"Error sending startup message: {e}")
 
-        # On startup, run the rolemsg logic to update all messages.
+        # On startup, only process Start. blocks and add persistent views for Skip. blocks
         try:
-            await _process_roles_messages(self, None, True)
+            await self.add_persistent_views()  # Just reconnect existing Skip. messages
+            # Only process Start. blocks (if any) - Skip. blocks are already processed
+            await self.process_start_blocks_only()
         except Exception as e:
-            print(f"Error running silent role message update: {e}")
+            print(f"Error during startup message processing: {e}")
+
+    async def process_start_blocks_only(self):
+        """Process only Start. blocks during startup, leaving Skip. blocks alone."""
+        try:
+            parsed_data = self.load_reaction_roles()
+            start_blocks_found = False
+            
+            for channel_id, config in parsed_data.items():
+                if config["block_type"] == "start.":
+                    start_blocks_found = True
+                    if VERBOSE_LOGGING:
+                        print(f"Found Start. block for channel {channel_id}, will process it.")
+            
+            if start_blocks_found:
+                # Only run full processing if we found Start. blocks
+                await _process_roles_messages(self, None, True)
+            elif VERBOSE_LOGGING:
+                print("No Start. blocks found during startup - all blocks are already Skip.")
+                
+        except Exception as e:
+            print(f"Error processing Start. blocks: {e}")
 
     async def add_persistent_views(self):
-        """Add persistent views for existing messages on startup."""
+        """Add persistent views for existing Skip. messages on startup."""
         try:
             parsed_data = self.load_reaction_roles()
             for channel_id, config in parsed_data.items():
-                if config["message_id"] and config["buttons"]:
+                # Only add views for Skip. blocks that already have message IDs
+                if config["block_type"] == "skip." and config["message_id"] and config["buttons"]:
                     # Create a view with the specific buttons for this message
                     view = PersistentRoleView(self, config["buttons"])
                     self.add_view(view, message_id=config["message_id"])
+                    if VERBOSE_LOGGING:
+                        print(f"Added persistent view for Skip. block message {config['message_id']} in channel {channel_id}")
         except Exception as e:
             print(f"Error adding persistent views: {e}")
 
@@ -276,7 +302,8 @@ class RulesBot(commands.Bot):
                     "replace_msg": replace_msg,
                     "message_text": message_text,
                     "emotes": emotes,
-                    "buttons": buttons
+                    "buttons": buttons,
+                    "block_type": block_type  # Add block type to track Start./Skip.
                 }
 
         # Populate the bot's reaction_roles dictionary with the new structure
@@ -671,6 +698,13 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                 print(f"Channel with ID {channel_id} not found.")
             continue
         
+        # For startup processing (is_ephemeral=True), only process Start. blocks
+        # For manual commands (is_ephemeral=False), process all blocks
+        if is_ephemeral and config["block_type"] == "skip.":
+            if VERBOSE_LOGGING:
+                print(f"Skipping Skip. block for channel {channel_id} during startup")
+            continue
+        
         message_to_update = None
         new_message_id = None
         
@@ -724,8 +758,14 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                     print("This is likely due to an invalid emoji format in your roles.txt file.")
                     print("Please ensure you are using a raw unicode emoji or the full custom emoji format (<:name:id>).")
                     
-        # Mark the block as skipped so it's not handled again
-        bot_instance._mark_block_as_skipped(channel_id, new_message_id)
+        # Only mark the block as skipped if it was originally a "Start." block
+        # Skip. blocks should not be re-marked to avoid creating duplicates
+        if config["block_type"] == "start.":
+            bot_instance._mark_block_as_skipped(channel_id, new_message_id)
+            if VERBOSE_LOGGING:
+                print(f"Marked Start. block as Skip. for channel {channel_id}, message {new_message_id}")
+        elif VERBOSE_LOGGING:
+            print(f"Skipping _mark_block_as_skipped for Skip. block in channel {channel_id}")
 
     update_github_file(file_path, "Bot updated roles.txt with new message IDs")
 
