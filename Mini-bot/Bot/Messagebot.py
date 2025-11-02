@@ -26,7 +26,7 @@ RSI_ORG_VARIABLE = "SPBOYS"
 # The name of the role members receive upon successful verification.
 VERIFIED_ROLE_NAME = "Verified" 
 # New role whose members are protected from name spoofing.
-ADMIN_PROTECTED_ROLE_NAME = "The First Cruel Ones"
+ADMIN_PROTECTED_ROLE_NAME = "Founder"
 
 # Verification codes are now stored in memory (self.pending_verifications) and reset on bot restart.
 
@@ -159,6 +159,7 @@ class RulesBot(commands.Bot):
         await self.tree.sync()
         print(f'{self.user} has connected to Discord!')
         # We now add our persistent view back to the bot on setup
+        # The RoleView constructor now handles button reconstruction.
         self.add_view(RoleView(self))
 
     async def on_ready(self):
@@ -273,6 +274,25 @@ class RulesBot(commands.Bot):
                 self.reaction_roles[str(data['message_id'])] = data['emotes']
                 self.button_roles[str(data['message_id'])] = data['buttons']
         return parsed_data
+
+    def get_all_button_configs(self):
+        """Fetches all button configurations from all blocks in roles.txt for reconstruction."""
+        # This function fetches configs to reconstruct the persistent view on startup
+        parsed_data = self.load_reaction_roles()
+        all_buttons = []
+        for _, config in parsed_data.items():
+            if config["buttons"]:
+                for _, btn_data in config["buttons"].items():
+                    # Construct the unique custom_id exactly as done in _process_roles_messages
+                    custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
+                    
+                    all_buttons.append({
+                        "style": RoleButton.COLOR_MAP.get(btn_data['color'].lower(), discord.ButtonStyle.secondary),
+                        "emoji": btn_data['emoji'],
+                        "label": btn_data['text'],
+                        "custom_id": custom_id,
+                    })
+        return all_buttons
 
 
     def _mark_block_as_skipped(self, channel_id, message_id):
@@ -417,24 +437,40 @@ class RoleView(discord.ui.View):
     def __init__(self, bot):
         super().__init__(timeout=None)
         self.bot = bot
-        # NOTE: Dynamic buttons are better handled by overriding __init__ 
-        # and letting the bot re-add the view using self.add_item()
-        # The existing dynamic callback logic below is kept for compatibility.
+        self.reconstruct_buttons() # FIX: Reconstruct buttons for persistence
 
-    # NOTE: This dynamic callback structure is overly complex and relies on
-    # custom_id parsing which is usually done in the button class itself.
-    # We will keep it as-is for compatibility with the existing button structure,
-    # assuming the button initialization happens in _process_roles_messages.
-    
-    # We remove the custom_id in the @discord.ui.button decorator 
-    # to rely on the button object itself being re-instantiated with its full 
-    # custom_id when the bot restarts and runs self.add_view(RoleView(self)).
-    @discord.ui.button(style=discord.ButtonStyle.secondary, label="Click for Role", custom_id="role_button:callback")
-    async def dynamic_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+    def reconstruct_buttons(self):
+        """Dynamically reconstructs and adds persistent buttons to the view on startup."""
+        
+        # Clear any items added by the decorator or previous runs
+        self.clear_items()
+        
+        # Use the new method to get all necessary button data
+        button_configs = self.bot.get_all_button_configs()
+        
+        for btn_config in button_configs:
+            # We must use the exact style, label, emoji, and custom_id used when the message was sent.
+            button = discord.ui.Button(
+                style=btn_config['style'],
+                emoji=btn_config['emoji'],
+                label=btn_config['label'],
+                custom_id=btn_config['custom_id']
+            )
+            # Add a dynamic callback function to the reconstructed button
+            button.callback = self.dynamic_callback 
+            self.add_item(button)
+
+
+    # NOTE: The @discord.ui.button decorator is REMOVED so this method can serve as the
+    # universal callback for all dynamically added buttons.
+    async def dynamic_callback(self, interaction: discord.Interaction):
         """Handle dynamic button callbacks."""
         
-        # Custom ID format: "role_button:<color>:<emoji>:<text>:<role_names_list>:<is_toggle>"
-        custom_id_parts = button.custom_id.split(':')
+        # Get the button object that was clicked
+        button = interaction.data.get('custom_id') 
+
+        # Custom ID format: "COLOR:EMOJI:TEXT:ROLE_NAMES_LIST:IS_TOGGLE"
+        custom_id_parts = interaction.data['custom_id'].split(':')
         
         if len(custom_id_parts) < 5:
             await interaction.response.send_message("Button data is corrupt. Contact admin.", ephemeral=True)
@@ -545,6 +581,14 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                     label=btn_data['text'],
                     custom_id=custom_id # Set the custom ID here
                 )
+                
+                # Assign the universal dynamic_callback to the button
+                # NOTE: When running outside a persistent view context, this is required.
+                # However, since the final message uses a View that is *not* persistent (it's new),
+                # we rely on the custom_id for persistence. The dynamic_callback logic in the View 
+                # constructor should manage the callback on restart. We don't need to explicitly set 
+                # button.callback here if the logic is handled by the overall view structure.
+                
                 view.add_item(button)
         
         if message_to_update:
@@ -988,17 +1032,10 @@ async def on_raw_reaction_remove(payload):
                 role = discord.utils.get(guild.roles, name=role_name)
                 
                 if role is not None:
-                    # NOTE: Since the role is removed on reaction remove, 
-                    # the logic here needs to be: if it's a toggle role, 
-                    # we do nothing on removal since the on_raw_reaction_add
-                    # already handles the toggle logic. The original code here
-                    # seems to be trying to reverse the reaction_add logic, 
-                    # but only for toggle roles, which is counter-intuitive 
-                    # for reaction-role systems where removal usually means role removal.
-                    # Reverting the on_raw_reaction_remove logic to standard behavior:
-                    # If it's a toggle role, do nothing (user should use the button/reaction again).
-                    # If it's NOT a toggle role, remove the role.
-                    pass # We do nothing for toggle roles on removal.
+                    # If it's a toggle role, we don't handle the reaction removal 
+                    # as a role removal to simplify the interaction, as toggle is best
+                    # done by re-adding the reaction.
+                    pass 
             else:
                 # Non-toggle role, remove it when the reaction is removed.
                 role_name = role_data.get("role_name")
