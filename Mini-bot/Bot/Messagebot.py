@@ -460,8 +460,11 @@ class RoleView(discord.ui.View):
                 label=btn_config['label'],
                 custom_id=btn_config['custom_id']
             )
-            # FIX: Explicitly bind the dynamic_callback to the reconstructed button
-            button.callback = self.dynamic_callback 
+            # Create a proper callback that captures the interaction
+            async def button_callback(interaction: discord.Interaction, btn=button):
+                await self.dynamic_callback(interaction)
+            
+            button.callback = button_callback
             self.add_item(button)
             
     # REMOVED: @discord.ui.button decorator so this method can serve as the universal callback
@@ -579,9 +582,11 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                 continue
         
         # Case 2: Create or update the message
-        view = discord.ui.View(timeout=None)
+        view = RoleView(bot_instance)  # Use the bot's persistent view
         
         if config["buttons"]:
+            # Clear existing items and add new ones
+            view.clear_items()
             for _, btn_data in config["buttons"].items():
                 # Manually construct the custom_id for persistent views
                 custom_id = f"{btn_data['color']}:{btn_data['emoji']}:{btn_data['text']}:{';'.join(btn_data['role_names'])}:{btn_data['is_toggle']}"
@@ -592,6 +597,11 @@ async def _process_roles_messages(bot_instance, interaction: discord.Interaction
                     label=btn_data['text'],
                     custom_id=custom_id # Set the custom ID here
                 )
+                # Bind the callback properly
+                async def button_callback(interaction: discord.Interaction, btn=button):
+                    await view.dynamic_callback(interaction)
+                
+                button.callback = button_callback
                 view.add_item(button)
         
         if message_to_update:
